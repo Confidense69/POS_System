@@ -1,0 +1,135 @@
+:root {
+  --primary: #1a3a5c;
+  --primary-dark: #12283f;
+  --accent: #2d7a4d;
+  --bg: #f2f4f8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- LOGIN PAGE ---------- */
+.login-body {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  min-height: 100vh;
+}
+
+.brand-badge {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 1px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  border: none;
+  border-radius: 16px;
+}
+
+.btn-primary {
+  background-color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+.btn-primary:hover {
+  background-color: #23643f !important;
+  border-color: #23643f !important;
+}
+
+/* ---------- DASHBOARD ---------- */
+.dashboard-body {
+  background-color: var(--bg);
+}
+
+.sidebar {
+  min-height: 100vh;
+  background-color: var(--primary);
+  color: #fff;
+  width: 240px;
+}
+
+.sidebar .brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar .brand .brand-badge-sm {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.sidebar .nav-link {
+  color: #c6d2e0;
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sidebar .nav-link i {
+  width: 18px;
+  text-align: center;
+  font-size: 1rem;
+}
+.sidebar .nav-link:hover {
+  background-color: rgba(255,255,255,0.08);
+  color: #fff;
+}
+.sidebar .nav-link.active {
+  background-color: var(--accent);
+  color: #fff;
+}
+
+.sidebar .role-tag {
+  font-size: 0.75rem;
+  background: rgba(255,255,255,0.12);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.navbar-custom {
+  background-color: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.stat-card .icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 1.4rem;
+}
+.stat-card .icon i {
+  line-height: 1;
+}
