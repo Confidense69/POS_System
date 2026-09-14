@@ -2,31 +2,36 @@ POS System TODO
 ===============
 
 DONE
-- M1  DB connected; products.php returns 4 seeded products as JSON
+- M1  DB connected; api/products.php returns 4 seeded products as JSON
 - M2  fetch loop renders products (async/await, DOM build)
 - M2.5 barcode flow in cashier-pos.js (addByBarcode + renderProduct + alert)
 - M2.5B recall session: rebuilt script from memory, fixed deltas, scratch deleted
-- ENV Apache alias /pos -> repo folder (http://localhost/pos/ serves the app)
-- ENV dashboards converted to pages/*.php shells (guards left for user)
+- ENV Apache alias /pos -> repo folder; dashboards converted to pages/*.php shells
+- M3.5 API moved INTO repo (api/) served at /pos/api/; .gitignore added; pushed to GitHub
+- M3 task 1: passwords hashed (api/hash_user.php seeder) — keeps DB hashes valid on every machine
+- M3 task 2: api/login.php WRITTEN + VALIDATED (admin/password123 -> {"success":true,...})
+- M3 task 3: api/logout.php written + verified (HTTP 302 -> /pos/index.html)
 
-M3 — REAL LOGIN (in progress at #1)
-- [ ] 1. Hash seed passwords (admin/manager/cashier) via one-off PHP script in api/, run it, DELETE it
-- [ ] 2. Write api/login.php   (read JSON body, prepared stmt, password_verify, session_start)
-- [ ] 3. Write api/logout.php  (session_unset + session_destroy, redirect to ../index.html)
-- [ ] 4. index.html: remove the role dropdown (role comes from DB now)
-- [ ] 5. Rewrite js/login.js: POST JSON to /pos/api/login.php, redirect to pages/<role>-dashboard.php
-- [ ] 5b. cashier-pos.js line 12: fetch URL is now http://localhost/pos/api/products.php  (DONE once changed)
+M3 — REAL LOGIN (in progress at task 4)
+- [ ] 4. index.html: remove the role dropdown (role comes from DB now) — remove the <!-- Role --> div block
+- [ ] 5. Rewrite js/login.js: POST JSON to /pos/api/login.php (read key `success`),
+         then window.location.href = 'pages/' + data.role + '-dashboard.php'
 - [ ] 6. Add session guard + echo $_SESSION at the @M3 markers in all three pages/*.php
-- [ ] 7. Delete stale pages/*.html (after login routes to .php work)  [AI does with user's OK]
+         guard: session_start(); if (!isset($_SESSION['user_id'])) { header('Location: ../index.html'); exit; }
+         echoes: $_SESSION['full_name'], $_SESSION['role'] (login.php stores them)
+         Logout link -> http://localhost/pos/api/logout.php
+- [ ] 7. Delete stale pages/*.html (after login routes to .php work)  [AI with user's OK]
 - [ ] 8. Test admin/password123 -> Admin dashboard -> logout -> bounced to index.html
 - [ ] 9. Teach-back: explain login.php + one guard line-by-line
 
-DONE — M3 PORTABILITY
-- [x] API moved INTO the repo (api/config.php, api/products.php) served at /pos/api/
-- [x] Old C:\xampp\htdocs\pos_accounting removed (no double copies)
-- [x] .gitignore added (rules: OS junk, .env, *.local.php, vendor)
-- [x] Repo hygiene rule learned: git status + stage specific paths, never blind add .
-- [ ] (optional later) Dockerize with volume-mount + database.sql init if teacher demo needs it
+NEXT SESSION FLOW (contract): micro-drills if needed -> recall login.php from memory ->
+finish tasks 4-9 -> commit yourself -> NOTES.md teach-back.
+
+REMINDERS
+- PowerShell API test: JSON must be in a FILE, not inline (quotes get stripped).
+  curl.exe -s -X POST -H "Content-Type: application/json" -d @body.json http://localhost/pos/api/login.php
+- api files live in repo -> http://localhost/pos/api/...
+- login.php reply key is `success`; $_SESSION keys: user_id, username, full_name, role
 
 M4+ (later)
 - Checkout/charge: subtotal->discount->tax->total, save transaction to DB

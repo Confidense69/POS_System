@@ -87,5 +87,19 @@ CORS solved once in config.php via: header('Access-Control-Allow-Origin: *');  (
 - Repo hygiene rule: check `git status` + stage specific paths before every commit (never blind `git add .`)
 - Never commit: real DB passwords, API keys, .env. root/blank localhost creds are fine for school.
 
+## TESTING PHP ON WINDOWS POWERSHELL (gotcha, 9/14)
+- PowerShell 5.1 STRIPS double-quotes when passing inline JSON to curl.exe -> json_decode fails silently.
+- ALWAYS test POST with a file: write body.json ({"username":"admin","password":"password123"}) then:
+      curl.exe -s -X POST -H "Content-Type: application/json" -d @C:/Users/kyle/Documents/schoolstuff/code/pos-system/body.json http://localhost/pos/api/login.php
+- login.php validated with admin/password123 -> {"status":true,"role":"admin",...} (9/14)
+- CONTRACT CHECK: login.php replies key `success` (settled 9/14). $_SESSION keys: user_id, username, full_name, role.
+
+## M3 PROGRESS (9/14 night checkpoint)
+- api/login.php: DONE + validated (admin/password123 -> {"success":true}) — reply key `success`
+- api/logout.php: DONE + verified (HTTP 302 -> index.html) — user's own code, SO snippet + his trigger
+- NEXT SESSION: remove role dropdown -> rewrite js/login.js -> guards @M3 markers -> delete stale .html -> full loop test -> teach-back
+- RELEARNED BUG FAMILY: "defining =/= doing" (3rd time): logout() was never called; test on PowerShell = file-based JSON
+- Apache restarts needed after httpd.conf changes; Ctrl+F5 after frontend edits (Live Server retired)
+
 ## Barcode test values (seeded products)
 4800012345678 Rice · 4800012345679 Cooking Oil · 4800012345680 Coke · 4800012345681 Pancit Canton
