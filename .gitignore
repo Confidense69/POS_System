@@ -1,0 +1,12 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.log
+
+# PHPUnit / composer (future-proofing)
+vendor/
+.phpunit.result.cache
+
+# local environment only — never these
+.env
+*.local.php

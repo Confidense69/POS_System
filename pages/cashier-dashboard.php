@@ -1,3 +1,5 @@
+<!-- @M3 PLACE SESSION GUARD HERE: the php block must be the FIRST thing in this file,
+     before <!DOCTYPE html>. Guard: session_start(); if not logged in, header() redirect to ../index.html + exit; -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,20 +19,20 @@
         <div class="brand-badge-sm">POS</div>
         <span>Accounting System</span>
       </div>
-      <span class="role-tag align-self-start mb-3">Cashier</span>
+      <span class="role-tag align-self-start mb-3">Cashier<!-- @M3: echo $_SESSION['role'] here --></span>
       <ul class="nav nav-pills flex-column gap-1">
         <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-cart3"></i> POS / New Sale</a></li>
         <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-clock-history"></i> My Transactions</a></li>
         <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-arrow-counterclockwise"></i> Void / Refund</a></li>
       </ul>
-      <a href="../index.html" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
+      <a href="../index.html" class="btn btn-outline-light mt-auto btn-sm">Logout<!-- @M3: point this at api/logout.php --></a>
     </aside>
 
     <!-- Main -->
     <main class="main-content">
       <nav class="navbar navbar-custom px-4 py-3">
         <h1 class="h5 mb-0 fw-bold">Cashier Dashboard</h1>
-        <span class="text-muted small">Logged in as <strong>Cashier</strong></span>
+        <span class="text-muted small">Logged in as <strong>Cashier<!-- @M3: echo $_SESSION['full_name'] here --></strong></span>
       </nav>
 
       <div class="p-4">

@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS system_logs (
 -- Seed: default users
 -- Passwords are plain here for setup; hash them in the backend.
 -- Default password for all: password123
+-- Go change password later in database if needed.
 -- ------------------------------------------------------------
 INSERT INTO users (username, password_hash, full_name, role) VALUES
 ('admin',    'password123', 'System Administrator', 'admin'),
