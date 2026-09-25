@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Management System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-500 text-white p-2 rounded-lg flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-layer-group text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight">OmniSystem Hub</h1>
+                    <p class="text-xs text-slate-400">Integrated Enterprise Dashboard</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div id="system-time" class="text-xs font-mono bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700 text-slate-300 hidden sm:block">
+                    --:--:--
+                </div>
+                <div class="flex items-center space-x-2 border-l border-slate-700 pl-4">
+                    <div class="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center font-semibold text-sm">
+                        AD
+                    </div>
+                    <div class="hidden md:block text-left">
+                        <div class="text-xs font-medium">Admin User</div>
+                        <div class="text-[10px] text-slate-400">System Administrator</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-slate-200 shadow-sm sticky top-16 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-1 sm:space-x-4 overflow-x-auto custom-scrollbar py-2" id="navigation-tabs">
+                <button onclick="switchTab('pos')" id="tab-btn-pos" class="tab-btn active flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors bg-brand-50 text-brand-700 font-semibold border border-brand-200">
+                    <i class="fa-solid fa-cash-register"></i>
+                    <span>Point of Sale (POS)</span>
+                </button>
+
+                <button onclick="switchTab('inventory')" id="tab-btn-inventory" class="tab-btn flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span>Inventory</span>
+                    <span id="low-stock-badge" class="ml-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+                </button>
+
+                <button onclick="switchTab('suppliers')" id="tab-btn-suppliers" class="tab-btn flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                    <i class="fa-solid fa-truck-field"></i>
+                    <span>Suppliers</span>
+                </button>
+
+                <button onclick="switchTab('accounts')" id="tab-btn-accounts" class="tab-btn flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>Accounts</span>
+                </button>
+
+                <button onclick="switchTab('database')" id="tab-btn-database" class="tab-btn flex items-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors">
+                    <i class="fa-solid fa-database"></i>
+                    <span>SQL Schemas</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- Notification Toast Box -->
+        <div id="toast" class="fixed bottom-5 right-5 z-50 max-w-md hidden transform transition-all duration-300">
+            <div id="toast-content" class="bg-slate-900 text-white px-4 py-3 rounded-lg shadow-xl border border-slate-700 flex items-center space-x-3">
+                <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+                <div id="toast-message" class="text-sm font-medium">Notification message here</div>
+            </div>
+        </div>
+
+        <section id="section-pos" class="tab-section grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Product Catalog Grid for POS -->
+            <div class="lg:col-span-7 xl:col-span-8 space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                    <div class="relative flex-grow">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="pos-search" oninput="renderPOSCatalog()" placeholder="Search item by name or SKU..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <select id="pos-category-filter" onchange="renderPOSCatalog()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white">
+                        <option value="ALL">All Categories</option>
+                        <option value="Beverages">Beverages</option>
+                        <option value="Bakery">Bakery</option>
+                        <option value="Supplies">Supplies</option>
+                    </select>
+                </div>
+
+                <div id="pos-catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-1">
+                    <!-- Dynamic Product Cards Injected Here -->
+                </div>
+            </div>
+
+            <!-- Shopping Cart & Checkout -->
+            <div class="lg:col-span-5 xl:col-span-4">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-[650px] sticky top-36">
+                    <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-xl">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-cart-shopping text-brand-600"></i>
+                            <h2 class="font-bold text-slate-800">Current Order</h2>
+                        </div>
+                        <button onclick="clearCart()" class="text-xs text-rose-600 hover:text-rose-800 font-medium hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-trash-can"></i> Clear Cart
+                        </button>
+                    </div>
+
+                    <!-- Cart Item List -->
+                    <div id="cart-items" class="flex-grow overflow-y-auto custom-scrollbar p-4 divide-y divide-slate-100">
+                        <!-- Dynamic Cart Entries -->
+                    </div>
+
+                    <!-- Checkout Summary -->
+                    <div class="p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl space-y-3">
+                        <div class="space-y-1.5 text-sm">
+                            <div class="flex justify-between text-slate-600">
+                                <span>Subtotal</span>
+                                <span id="cart-subtotal" class="font-mono">$0.00</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600">
+                                <span>Sales Tax (8%)</span>
+                                <span id="cart-tax" class="font-mono">$0.00</span>
+                            </div>
+                            <div class="flex justify-between font-bold text-lg text-slate-900 border-t border-slate-200 pt-2">
+                                <span>Total</span>
+                                <span id="cart-total" class="font-mono text-brand-600">$0.00</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Cashier Account</label>
+                            <select id="pos-cashier-select" class="w-full text-xs p-2 border border-slate-300 rounded-lg bg-white mb-3">
+                                <!-- Dynamic Cashiers -->
+                            </select>
+
+                            <button onclick="processCheckout()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-colors flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-check-circle"></i>
+                                <span>Complete Sale</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-inventory" class="tab-section hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Inventory Management</h2>
+                    <p class="text-xs text-slate-500">Track product stock levels, pricing, and supplier linkings.</p>
+                </div>
+                <button onclick="openModal('add-product-modal')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-colors flex items-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Add New Product</span>
+                </button>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                    <div class="p-3 bg-blue-50 text-blue-600 rounded-lg"><i class="fa-solid fa-cubes text-xl"></i></div>
+                    <div>
+                        <div class="text-xs text-slate-500">Total Products</div>
+                        <div id="stat-total-products" class="text-lg font-bold text-slate-800">0</div>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                    <div class="p-3 bg-amber-50 text-amber-600 rounded-lg"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div>
+                    <div>
+                        <div class="text-xs text-slate-500">Low Stock Items (&le;10)</div>
+                        <div id="stat-low-stock" class="text-lg font-bold text-amber-600">0</div>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+                    <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg"><i class="fa-solid fa-sack-dollar text-xl"></i></div>
+                    <div>
+                        <div class="text-xs text-slate-500">Total Valuation</div>
+                        <div id="stat-inventory-value" class="text-lg font-bold text-slate-800">$0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between gap-3">
+                    <div class="relative max-w-sm w-full">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="inventory-search" oninput="renderInventoryTable()" placeholder="Search inventory..." class="w-full pl-9 pr-4 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3">SKU</th>
+                                <th class="px-4 py-3">Product Name</th>
+                                <th class="px-4 py-3">Category</th>
+                                <th class="px-4 py-3">Price</th>
+                                <th class="px-4 py-3">Stock Quantity</th>
+                                <th class="px-4 py-3">Supplier</th>
+                                <th class="px-4 py-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-slate-200">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-suppliers" class="tab-section hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Supplier Management</h2>
+                    <p class="text-xs text-slate-500">Manage vendor details and contact directory.</p>
+                </div>
+                <button onclick="openModal('add-supplier-modal')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-colors flex items-center space-x-2">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Register Supplier</span>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3">Supplier ID</th>
+                                <th class="px-4 py-3">Company Name</th>
+                                <th class="px-4 py-3">Email Address</th>
+                                <th class="px-4 py-3">Phone</th>
+                                <th class="px-4 py-3">Address</th>
+                                <th class="px-4 py-3 text-center">Linked Products</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suppliers-table-body" class="divide-y divide-slate-200">
+                            <!-- Dynamic Suppliers -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-accounts" class="tab-section hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Account Management</h2>
+                    <p class="text-xs text-slate-500">Manage system roles, access credentials, and user statuses.</p>
+                </div>
+                <button onclick="openModal('add-account-modal')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transition-colors flex items-center space-x-2">
+                    <i class="fa-solid fa-user-gear"></i>
+                    <span>Create User Account</span>
+                </button>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-600">
+                        <thead class="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="px-4 py-3">User ID</th>
+                                <th class="px-4 py-3">Username</th>
+                                <th class="px-4 py-3">Email</th>
+                                <th class="px-4 py-3">Role</th>
+                                <th class="px-4 py-3">Status</th>
+                                <th class="px-4 py-3 text-right">Toggle Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accounts-table-body" class="divide-y divide-slate-200">
+                            <!-- Dynamic Accounts -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-database" class="tab-section hidden space-y-6">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900">Relational Database Schemas (SQL)</h2>
+                <p class="text-xs text-slate-500">System structure and foreign key bindings for backend implementation.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- SQL Box 1 -->
+                <div class="bg-slate-900 rounded-xl p-4 shadow-md border border-slate-800 text-slate-200 font-mono text-xs">
+                    <div class="text-brand-400 font-bold mb-2 pb-2 border-b border-slate-800 flex justify-between">
+                        <span>1. Accounts & Suppliers Tables</span>
+                        <span class="text-slate-500">PostgreSQL / MySQL</span>
+                    </div>
+<pre class="overflow-x-auto text-emerald-400">
+<span class="text-purple-400">CREATE TABLE</span> accounts (
+    user_id <span class="text-amber-300">VARCHAR(36)</span> PRIMARY KEY,
+    username <span class="text-amber-300">VARCHAR(50)</span> NOT NULL UNIQUE,
+    email <span class="text-amber-300">VARCHAR(100)</span> NOT NULL UNIQUE,
+    role <span class="text-amber-300">VARCHAR(20)</span> NOT NULL,
+    is_active <span class="text-amber-300">BOOLEAN</span> DEFAULT TRUE
+);
+
+<span class="text-purple-400">CREATE TABLE</span> suppliers (
+    supplier_id <span class="text-amber-300">VARCHAR(36)</span> PRIMARY KEY,
+    name <span class="text-amber-300">VARCHAR(100)</span> NOT NULL,
+    contact_email <span class="text-amber-300">VARCHAR(100)</span>,
+    phone <span class="text-amber-300">VARCHAR(20)</span>
+);
+</pre>
+                </div>
+
+                <!-- SQL Box 2 -->
+                <div class="bg-slate-900 rounded-xl p-4 shadow-md border border-slate-800 text-slate-200 font-mono text-xs">
+                    <div class="text-brand-400 font-bold mb-2 pb-2 border-b border-slate-800 flex justify-between">
+                        <span>2. Products & Transactions Tables</span>
+                        <span class="text-slate-500">PostgreSQL / MySQL</span>
+                    </div>
+<pre class="overflow-x-auto text-emerald-400">
+<span class="text-purple-400">CREATE TABLE</span> products (
+    sku <span class="text-amber-300">VARCHAR(36)</span> PRIMARY KEY,
+    name <span class="text-amber-300">VARCHAR(100)</span> NOT NULL,
+    price <span class="text-amber-300">DECIMAL(10,2)</span> NOT NULL,
+    stock_quantity <span class="text-amber-300">INT</span> NOT NULL DEFAULT 0,
+    supplier_id <span class="text-amber-300">VARCHAR(36)</span> REFERENCES suppliers(supplier_id)
+);
+
+<span class="text-purple-400">CREATE TABLE</span> transactions (
+    transaction_id <span class="text-amber-300">VARCHAR(36)</span> PRIMARY KEY,
+    user_id <span class="text-amber-300">VARCHAR(36)</span> REFERENCES accounts(user_id),
+    total_amount <span class="text-amber-300">DECIMAL(10,2)</span> NOT NULL,
+    created_at <span class="text-amber-300">TIMESTAMP</span> DEFAULT CURRENT_TIMESTAMP
+);
+</pre>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    
+    <!-- Modal: Add Product -->
+    <div id="add-product-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">Add Inventory Product</h3>
+                <button onclick="closeModal('add-product-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleCreateProduct(event)" class="p-4 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Product Name</label>
+                    <input type="text" id="prod-name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+                        <select id="prod-category" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="Beverages">Beverages</option>
+                            <option value="Bakery">Bakery</option>
+                            <option value="Supplies">Supplies</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Price ($)</label>
+                        <input type="number" step="0.01" id="prod-price" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Stock Initial Qty</label>
+                        <input type="number" id="prod-stock" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Supplier</label>
+                        <select id="prod-supplier" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <!-- Dynamic Options -->
+                        </select>
+                    </div>
+                </div>
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('add-product-modal')" class="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 text-white text-xs font-medium rounded-lg hover:bg-brand-700">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Supplier -->
+    <div id="add-supplier-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">Register New Supplier</h3>
+                <button onclick="closeModal('add-supplier-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleCreateSupplier(event)" class="p-4 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Company Name</label>
+                    <input type="text" id="sup-name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Email Address</label>
+                    <input type="email" id="sup-email" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Phone Number</label>
+                    <input type="text" id="sup-phone" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Address</label>
+                    <input type="text" id="sup-address" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('add-supplier-modal')" class="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 text-white text-xs font-medium rounded-lg hover:bg-brand-700">Register Supplier</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Account -->
+    <div id="add-account-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800">Create Account</h3>
+                <button onclick="closeModal('add-account-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form onsubmit="handleCreateAccount(event)" class="p-4 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
+                    <input type="text" id="acc-username" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Email</label>
+                    <input type="email" id="acc-email" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">System Role</label>
+                    <select id="acc-role" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        <option value="Cashier">Cashier</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" onclick="closeModal('add-account-modal')" class="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-brand-600 text-white text-xs font-medium rounded-lg hover:bg-brand-700">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            accounts: [
+                { id: 'USR-8A2F1C', username: 'jdoe', email: 'jdoe@system.com', role: 'Cashier', active: true },
+                { id: 'USR-3B9D0A', username: 'msmith', email: 'msmith@system.com', role: 'Manager', active: true },
+                { id: 'USR-5E11C4', username: 'akhan', email: 'akhan@system.com', role: 'Admin', active: false }
+            ],
+            suppliers: [
+                { id: 'SUP-101', name: 'Acme Wholesale', email: 'orders@acme.com', phone: '555-0199', address: '123 Logistics Way' },
+                { id: 'SUP-102', name: 'Beanery Roasters', email: 'sales@beanery.com', phone: '555-0842', address: '45 Coffee Rd' }
+            ],
+            products: [
+                { sku: 'SKU-001', name: 'Espresso Beans 1kg', category: 'Beverages', price: 18.50, stock: 8, supplierId: 'SUP-102' },
+                { sku: 'SKU-002', name: 'Oat Milk 1L', category: 'Beverages', price: 4.20, stock: 45, supplierId: 'SUP-101' },
+                { sku: 'SKU-003', name: 'Croissant French', category: 'Bakery', price: 3.50, stock: 24, supplierId: 'SUP-101' },
+                { sku: 'SKU-004', name: 'Paper Cups 12oz', category: 'Supplies', price: 0.15, stock: 450, supplierId: 'SUP-101' }
+            ],
+            cart: []
+        };
+
+        function updateClock() {
+            const timeEl = document.getElementById('system-time');
+            if (timeEl) {
+                const now = new Date();
+                timeEl.textContent = now.toLocaleTimeString();
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-message');
+
+            msg.textContent = message;
+            if (isError) {
+                icon.className = 'fa-solid fa-circle-xmark text-rose-400 text-lg';
+            } else {
+                icon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+            }
+
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-50', 'text-brand-700', 'font-semibold', 'border', 'border-brand-200');
+                btn.classList.add('text-slate-600');
+            });
+
+            const targetSection = document.getElementById(`section-${tabId}`);
+            const targetBtn = document.getElementById(`tab-btn-${tabId}`);
+
+            if (targetSection && targetBtn) {
+                targetSection.classList.remove('hidden');
+                targetBtn.classList.add('bg-brand-50', 'text-brand-700', 'font-semibold', 'border', 'border-brand-200');
+                targetBtn.classList.remove('text-slate-600');
+            }
+        }
+
+        function openModal(id) {
+            populateModalDropdowns();
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function populateModalDropdowns() {
+            // Suppliers into Product modal
+            const prodSupSelect = document.getElementById('prod-supplier');
+            prodSupSelect.innerHTML = state.suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+            // Cashiers into POS select
+            const posCashierSelect = document.getElementById('pos-cashier-select');
+            posCashierSelect.innerHTML = state.accounts
+                .filter(a => a.active)
+                .map(a => `<option value="${a.id}">${a.username} (${a.role})</option>`).join('');
+        }
+
+        function renderPOSCatalog() {
+            const grid = document.getElementById('pos-catalog-grid');
+            const search = document.getElementById('pos-search').value.toLowerCase();
+            const category = document.getElementById('pos-category-filter').value;
+
+            const filtered = state.products.filter(p => {
+                const matchesSearch = p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search);
+                const matchesCat = category === 'ALL' || p.category === category;
+                return matchesSearch && matchesCat;
+            });
+
+            grid.innerHTML = filtered.map(p => {
+                const isOut = p.stock <= 0;
+                return `
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-3">
+                        <div>
+                            <div class="flex justify-between items-start">
+                                <span class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">${p.sku}</span>
+                                <span class="text-xs ${p.stock <= 10 ? 'text-amber-600 font-bold' : 'text-slate-400'}">
+                                    ${p.stock} left
+                                </span>
+                            </div>
+                            <h3 class="font-semibold text-slate-800 text-sm mt-1">${p.name}</h3>
+                            <p class="text-xs text-slate-400">${p.category}</p>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+                            <span class="font-bold text-slate-900">$${p.price.toFixed(2)}</span>
+                            <button onclick="addToCart('${p.sku}')" ${isOut ? 'disabled' : ''} class="px-3 py-1.5 ${isOut ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-brand-600 hover:bg-brand-700 text-white'} text-xs font-semibold rounded-lg transition-colors">
+                                ${isOut ? 'Out of Stock' : '+ Add'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addToCart(sku) {
+            const product = state.products.find(p => p.sku === sku);
+            if (!product || product.stock <= 0) return;
+
+            const cartItem = state.cart.find(ci => ci.sku === sku);
+            if (cartItem) {
+                if (cartItem.qty < product.stock) {
+                    cartItem.qty++;
+                } else {
+                    showToast(`Cannot add more. Max stock (${product.stock}) reached.`, true);
+                    return;
+                }
+            } else {
+                state.cart.push({ sku: product.sku, name: product.name, price: product.price, qty: 1 });
+            }
+            renderCart();
+        }
+
+        function updateCartQty(sku, change) {
+            const cartItem = state.cart.find(ci => ci.sku === sku);
+            const product = state.products.find(p => p.sku === sku);
+            if (!cartItem) return;
+
+            cartItem.qty += change;
+            if (cartItem.qty > product.stock) {
+                cartItem.qty = product.stock;
+                showToast(`Stock limit reached.`, true);
+            }
+
+            if (cartItem.qty <= 0) {
+                state.cart = state.cart.filter(ci => ci.sku !== sku);
+            }
+            renderCart();
+        }
+
+        function clearCart() {
+            state.cart = [];
+            renderCart();
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items');
+            if (state.cart.length === 0) {
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-12">
+                        <i class="fa-solid fa-basket-shopping text-3xl"></i>
+                        <p class="text-xs">Cart is empty</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = state.cart.map(item => `
+                    <div class="py-2.5 flex justify-between items-center">
+                        <div class="flex-grow pr-2">
+                            <div class="text-xs font-semibold text-slate-800">${item.name}</div>
+                            <div class="text-[11px] text-slate-400 font-mono">$${item.price.toFixed(2)} each</div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="updateCartQty('${item.sku}', -1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs flex items-center justify-center font-bold">-</button>
+                            <span class="text-xs font-bold w-4 text-center">${item.qty}</span>
+                            <button onclick="updateCartQty('${item.sku}', 1)" class="w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs flex items-center justify-center font-bold">+</button>
+                            <span class="text-xs font-bold font-mono text-slate-800 w-12 text-right">$${(item.price * item.qty).toFixed(2)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Totals
+            const subtotal = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const tax = subtotal * 0.08;
+            const total = subtotal + tax;
+
+            document.getElementById('cart-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('cart-tax').textContent = `$${tax.toFixed(2)}`;
+            document.getElementById('cart-total').textContent = `$${total.toFixed(2)}`;
+        }
+
+        function processCheckout() {
+            if (state.cart.length === 0) {
+                showToast('Cannot complete sale with an empty cart.', true);
+                return;
+            }
+
+            // Deduct inventory
+            state.cart.forEach(cartItem => {
+                const prod = state.products.find(p => p.sku === cartItem.sku);
+                if (prod) {
+                    prod.stock -= cartItem.qty;
+                }
+            });
+
+            showToast('Transaction processed successfully!');
+            clearCart();
+            renderPOSCatalog();
+            renderInventoryTable();
+            updateInventoryStats();
+        }
+
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventory-table-body');
+            const search = document.getElementById('inventory-search').value.toLowerCase();
+
+            const filtered = state.products.filter(p => 
+                p.name.toLowerCase().includes(search) || 
+                p.sku.toLowerCase().includes(search) ||
+                p.category.toLowerCase().includes(search)
+            );
+
+            tbody.innerHTML = filtered.map(p => {
+                const supplier = state.suppliers.find(s => s.id === p.supplierId);
+                const isLow = p.stock <= 10;
+                return `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 font-mono text-xs font-semibold text-slate-700">${p.sku}</td>
+                        <td class="px-4 py-3 font-medium text-slate-900">${p.name}</td>
+                        <td class="px-4 py-3">${p.category}</td>
+                        <td class="px-4 py-3 font-mono">$${p.price.toFixed(2)}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-semibold ${isLow ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}">
+                                ${isLow ? '<i class="fa-solid fa-triangle-exclamation text-[10px]"></i>' : ''}
+                                <span>${p.stock} units</span>
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-xs text-slate-500">${supplier ? supplier.name : 'N/A'}</td>
+                        <td class="px-4 py-3 text-right">
+                            <button onclick="adjustStock('${p.sku}', 10)" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-1 rounded border border-emerald-200">
+                                +10 Stock
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function adjustStock(sku, amount) {
+            const prod = state.products.find(p => p.sku === sku);
+            if (prod) {
+                prod.stock += amount;
+                renderInventoryTable();
+                renderPOSCatalog();
+                updateInventoryStats();
+                showToast(`Restocked ${prod.name}`);
+            }
+        }
+
+        function updateInventoryStats() {
+            const totalProds = state.products.length;
+            const lowStockCount = state.products.filter(p => p.stock <= 10).length;
+            const valuation = state.products.reduce((sum, p) => sum + (p.price * p.stock), 0);
+
+            document.getElementById('stat-total-products').textContent = totalProds;
+            document.getElementById('stat-low-stock').textContent = lowStockCount;
+            document.getElementById('stat-inventory-value').textContent = `$${valuation.toFixed(2)}`;
+
+            const badge = document.getElementById('low-stock-badge');
+            if (lowStockCount > 0) {
+                badge.textContent = lowStockCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function handleCreateProduct(e) {
+            e.preventDefault();
+            const name = document.getElementById('prod-name').value;
+            const category = document.getElementById('prod-category').value;
+            const price = parseFloat(document.getElementById('prod-price').value);
+            const stock = parseInt(document.getElementById('prod-stock').value);
+            const supplierId = document.getElementById('prod-supplier').value;
+
+            const sku = `SKU-${Math.floor(100 + Math.random() * 900)}`;
+            state.products.push({ sku, name, category, price, stock, supplierId });
+
+            closeModal('add-product-modal');
+            e.target.reset();
+            renderInventoryTable();
+            renderPOSCatalog();
+            updateInventoryStats();
+            showToast(`Added ${name}`);
+        }
+
+        function renderSuppliersTable() {
+            const tbody = document.getElementById('suppliers-table-body');
+            tbody.innerHTML = state.suppliers.map(s => {
+                const linkedCount = state.products.filter(p => p.supplierId === s.id).length;
+                return `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 font-mono text-xs font-semibold text-slate-700">${s.id}</td>
+                        <td class="px-4 py-3 font-medium text-slate-900">${s.name}</td>
+                        <td class="px-4 py-3">${s.email}</td>
+                        <td class="px-4 py-3">${s.phone}</td>
+                        <td class="px-4 py-3 text-xs text-slate-500">${s.address}</td>
+                        <td class="px-4 py-3 text-center">
+                            <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium border border-blue-100">
+                                ${linkedCount} items
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function handleCreateSupplier(e) {
+            e.preventDefault();
+            const name = document.getElementById('sup-name').value;
+            const email = document.getElementById('sup-email').value;
+            const phone = document.getElementById('sup-phone').value;
+            const address = document.getElementById('sup-address').value;
+
+            const id = `SUP-${Math.floor(100 + Math.random() * 900)}`;
+            state.suppliers.push({ id, name, email, phone, address });
+
+            closeModal('add-supplier-modal');
+            e.target.reset();
+            renderSuppliersTable();
+            populateModalDropdowns();
+            showToast(`Registered ${name}`);
+        }
+
+        function renderAccountsTable() {
+            const tbody = document.getElementById('accounts-table-body');
+            tbody.innerHTML = state.accounts.map(a => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 font-mono text-xs font-semibold text-slate-700">${a.id}</td>
+                    <td class="px-4 py-3 font-medium text-slate-900">${a.username}</td>
+                    <td class="px-4 py-3">${a.email}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full ${a.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-slate-100 text-slate-700'}">
+                            ${a.role}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${a.active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                            ${a.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="toggleAccountStatus('${a.id}')" class="text-xs ${a.active ? 'text-rose-600 hover:text-rose-800' : 'text-emerald-600 hover:text-emerald-800'} font-medium">
+                            ${a.active ? 'Deactivate' : 'Activate'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function toggleAccountStatus(id) {
+            const acc = state.accounts.find(a => a.id === id);
+            if (acc) {
+                acc.active = !acc.active;
+                renderAccountsTable();
+                populateModalDropdowns();
+                showToast(`Updated status for ${acc.username}`);
+            }
+        }
+
+        function handleCreateAccount(e) {
+            e.preventDefault();
+            const username = document.getElementById('acc-username').value;
+            const email = document.getElementById('acc-email').value;
+            const role = document.getElementById('acc-role').value;
+
+            const id = `USR-${Math.floor(1000 + Math.random() * 9000).toString(16).toUpperCase()}`;
+            state.accounts.push({ id, username, email, role, active: true });
+
+            closeModal('add-account-modal');
+            e.target.reset();
+            renderAccountsTable();
+            populateModalDropdowns();
+            showToast(`Created user account ${username}`);
+        }
+
+        window.onload = function() {
+            populateModalDropdowns();
+            renderPOSCatalog();
+            renderCart();
+            renderInventoryTable();
+            updateInventoryStats();
+            renderSuppliersTable();
+            renderAccountsTable();
+        };
+    </script>
+</body>
+</html>
