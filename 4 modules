@@ -1,0 +1,809 @@
+////////////////////////////////////////////////////////ADMIN-DASHBOARD PHP
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../index.html");
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | POS Accounting System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+</head>
+<body class="dashboard-body">
+
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <aside class="sidebar d-flex flex-column p-3">
+      <div class="brand mb-4">
+        <div class="brand-badge-sm">POS</div>
+        <span>Accounting Sys</span>
+      </div>
+      <span class="role-tag align-self-start mb-3"><?php echo htmlspecialchars($_SESSION['role'] ?? 'Admin'); ?></span>
+      
+      <ul class="nav nav-pills flex-column gap-1" id="dashboardTabs" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" id="tab-overview" data-bs-toggle="pill" href="#sec-overview"><i class="bi bi-speedometer2"></i> Dashboard</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-accounts" data-bs-toggle="pill" href="#sec-accounts"><i class="bi bi-people"></i> Users &amp; Accounts</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-inventory" data-bs-toggle="pill" href="#sec-inventory"><i class="bi bi-box-seam"></i> Products / Inventory</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-suppliers" data-bs-toggle="pill" href="#sec-suppliers"><i class="bi bi-truck"></i> Suppliers</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-pos" data-bs-toggle="pill" href="#sec-pos"><i class="bi bi-receipt"></i> POS &amp; Transactions</a>
+        </li>
+      </ul>
+      <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content flex-grow-1">
+      <nav class="navbar navbar-custom px-4 py-3">
+        <h1 class="h5 mb-0 fw-bold">Enterprise Management Dashboard</h1>
+        <span class="text-muted small">Logged in as <strong><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Admin'); ?></strong></span>
+      </nav>
+
+      <div class="p-4 tab-content" id="dashboardTabsContent">
+
+        <!-- OVERVIEW TAB -->
+        <div class="tab-pane fade show active" id="sec-overview">
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <div class="card stat-card"><div class="card-body"><div class="text-muted small">Low Stock Items</div><div class="h5 mb-0 text-warning" id="statLowStock">0</div></div></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card stat-card"><div class="card-body"><div class="text-muted small">Total Products</div><div class="h5 mb-0" id="statProducts">0</div></div></div>
+            </div>
+            <div class="col-md-4">
+              <div class="card stat-card"><div class="card-body"><div class="text-muted small">System Status</div><div class="h5 mb-0 text-success">Connected</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. ACCOUNTS TAB -->
+        <div class="tab-pane fade" id="sec-accounts">
+          <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+              <h5 class="mb-0 fw-bold"><i class="bi bi-people text-primary me-2"></i>Account Management</h5>
+              <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAccountModal">+ Add User</button>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr><th>User ID</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr>
+                  </thead>
+                  <tbody id="accountsTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. INVENTORY TAB -->
+        <div class="tab-pane fade" id="sec-inventory">
+          <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+              <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam text-primary me-2"></i>Inventory Management</h5>
+              <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr><th>SKU</th><th>Product Name</th><th>Supplier</th><th>Price</th><th>Stock</th><th>Action</th></tr>
+                  </thead>
+                  <tbody id="inventoryTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. SUPPLIERS TAB -->
+        <div class="tab-pane fade" id="sec-suppliers">
+          <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+              <h5 class="mb-0 fw-bold"><i class="bi bi-truck text-primary me-2"></i>Supplier Management</h5>
+              <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSupplierModal">+ Add Supplier</button>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr><th>ID</th><th>Company</th><th>Email</th><th>Phone</th><th>Address</th></tr>
+                  </thead>
+                  <tbody id="suppliersTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. POS / TRANSACTIONS TAB -->
+        <div class="tab-pane fade" id="sec-pos">
+          <div class="row g-3">
+            <div class="col-lg-8">
+              <div class="card shadow-sm">
+                <div class="card-header bg-white fw-semibold">POS Register</div>
+                <div class="card-body">
+                  <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                      <tr><th>Item</th><th class="text-center">Qty</th><th class="text-end">Price</th><th class="text-end">Line Total</th></tr>
+                    </thead>
+                    <tbody id="posCartBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="card shadow-sm">
+                <div class="card-header bg-white fw-semibold">Payment Summary</div>
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-2"><span class="text-muted">Subtotal</span><span id="posSubtotal">$0.00</span></div>
+                  <div class="d-flex justify-content-between mb-3"><span class="text-muted">Tax (8%)</span><span id="posTax">$0.00</span></div>
+                  <hr>
+                  <div class="d-flex justify-content-between mb-3"><span class="fw-bold">TOTAL</span><span class="fw-bold h5 text-primary mb-0" id="posTotal">$0.00</span></div>
+                  <button class="btn btn-success w-100 btn-lg" id="posCheckoutBtn">Checkout &amp; Deduct Stock</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: Add Product -->
+  <div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="addProductForm">
+          <div class="modal-header"><h5 class="modal-title">Add Product</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div class="mb-2"><label class="form-label">SKU / Barcode</label><input type="text" id="mSku" class="form-control" required></div>
+            <div class="mb-2"><label class="form-label">Name</label><input type="text" id="mName" class="form-control" required></div>
+            <div class="mb-2"><label class="form-label">Supplier</label><select id="mSupplier" class="form-select"></select></div>
+            <div class="row g-2 mb-2">
+              <div class="col-6"><label class="form-label">Price ($)</label><input type="number" step="0.01" id="mPrice" class="form-control" required></div>
+              <div class="col-6"><label class="form-label">Stock Qty</label><input type="number" id="mStock" class="form-control" required></div>
+            </div>
+          </div>
+          <div class="modal-footer"><button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Save Item</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add User -->
+  <div class="modal fade" id="addAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="addAccountForm">
+          <div class="modal-header"><h5 class="modal-title">Create User</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div class="mb-2"><label class="form-label">Username</label><input type="text" id="accUsername" class="form-control" required></div>
+            <div class="mb-2"><label class="form-label">Full Name</label><input type="text" id="accFullName" class="form-control" required></div>
+            <div class="mb-2"><label class="form-label">Email</label><input type="email" id="accEmail" class="form-control"></div>
+            <div class="mb-2">
+              <label class="form-label">Role</label>
+              <select id="accRole" class="form-select">
+                <option value="cashier">Cashier</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer"><button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Create Account</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add Supplier -->
+  <div class="modal fade" id="addSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="addSupplierForm">
+          <div class="modal-header"><h5 class="modal-title">Register Supplier</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div class="mb-2"><label class="form-label">Company Name</label><input type="text" id="supName" class="form-control" required></div>
+            <div class="mb-2"><label class="form-label">Contact Person</label><input type="text" id="supContact" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Email</label><input type="email" id="supEmail" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Phone</label><input type="text" id="supPhone" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">Address</label><input type="text" id="supAddress" class="form-control"></div>
+          </div>
+          <div class="modal-footer"><button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Save Supplier</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////ADMIN SYSTEMS (JS)
+document.addEventListener("DOMContentLoaded", () => {
+    loadAccounts();
+    loadInventory();
+    loadSuppliers();
+
+    // Form Submissions
+    document.getElementById("addProductForm")?.addEventListener("submit", handleAddProduct);
+    document.getElementById("addSupplierForm")?.addEventListener("submit", handleAddSupplier);
+    document.getElementById("addAccountForm")?.addEventListener("submit", handleAddAccount);
+    document.getElementById("posCheckoutBtn")?.addEventListener("click", handlePOSCheckout);
+});
+
+let posCart = [];
+
+// 1. Account Management
+async function loadAccounts() {
+    const res = await fetch("../api/pos_system_api.php?action=get_users");
+    const result = await res.json();
+    const tbody = document.getElementById("accountsTableBody");
+    if (!tbody) return;
+
+    if (result.status === "success") {
+        tbody.innerHTML = result.data.map(u => `
+            <tr>
+                <td><code>USR-${u.id}</code></td>
+                <td class="fw-bold">${u.username}</td>
+                <td>${u.email || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${u.role}</span></td>
+                <td><span class="badge ${u.is_active == 1 ? 'bg-success' : 'bg-danger'}">${u.is_active == 1 ? 'Active' : 'Inactive'}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger" onclick="toggleUser(${u.id})">
+                        ${u.is_active == 1 ? 'Deactivate' : 'Activate'}
+                    </button>
+                </td>
+            </tr>
+        `).join("");
+    }
+}
+
+async function toggleUser(userId) {
+    await fetch("../api/pos_system_api.php?action=toggle_user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId })
+    });
+    loadAccounts();
+}
+
+async function handleAddAccount(e) {
+    e.preventDefault();
+    const payload = {
+        username: document.getElementById("accUsername").value,
+        full_name: document.getElementById("accFullName").value,
+        email: document.getElementById("accEmail").value,
+        role: document.getElementById("accRole").value
+    };
+
+    await fetch("../api/pos_system_api.php?action=add_user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    loadAccounts();
+}
+
+// 2. Inventory Management
+async function loadInventory() {
+    const res = await fetch("../api/pos_system_api.php?action=get_products");
+    const result = await res.json();
+    const tbody = document.getElementById("inventoryTableBody");
+    if (!tbody) return;
+
+    if (result.status === "success") {
+        let lowStockCount = 0;
+        tbody.innerHTML = result.data.map(p => {
+            const isLow = p.stock_qty <= p.reorder_level;
+            if (isLow) lowStockCount++;
+
+            return `
+                <tr>
+                    <td><code>${p.barcode}</code></td>
+                    <td class="fw-bold">${p.name}</td>
+                    <td>${p.supplier_name || 'N/A'}</td>
+                    <td>$${parseFloat(p.price).toFixed(2)}</td>
+                    <td>
+                        <span class="badge ${isLow ? 'bg-warning text-dark' : 'bg-success'}">
+                            ${p.stock_qty} units
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="restockProduct(${p.id}, 10)">+10 Stock</button>
+                        <button class="btn btn-sm btn-success" onclick="addCartItem(${p.id}, '${p.name}', ${p.price})">+ POS</button>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+
+        document.getElementById("statLowStock").innerText = lowStockCount;
+        document.getElementById("statProducts").innerText = result.data.length;
+    }
+}
+
+async function handleAddProduct(e) {
+    e.preventDefault();
+    const payload = {
+        barcode: document.getElementById("mSku").value,
+        name: document.getElementById("mName").value,
+        price: parseFloat(document.getElementById("mPrice").value),
+        stock_qty: parseInt(document.getElementById("mStock").value),
+        supplier_id: document.getElementById("mSupplier").value
+    };
+
+    await fetch("../api/pos_system_api.php?action=add_product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    loadInventory();
+}
+
+async function restockProduct(productId, qty) {
+    await fetch("../api/pos_system_api.php?action=restock_product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId, quantity: qty })
+    });
+    loadInventory();
+}
+
+// 3. Supplier Management
+async function loadSuppliers() {
+    const res = await fetch("../api/pos_system_api.php?action=get_suppliers");
+    const result = await res.json();
+    const tbody = document.getElementById("suppliersTableBody");
+    const select = document.getElementById("mSupplier");
+    if (!tbody) return;
+
+    if (result.status === "success") {
+        tbody.innerHTML = result.data.map(s => `
+            <tr>
+                <td><code>SUP-${s.id}</code></td>
+                <td class="fw-bold">${s.name}</td>
+                <td>${s.email || 'N/A'}</td>
+                <td>${s.phone || 'N/A'}</td>
+                <td>${s.address || 'N/A'}</td>
+            </tr>
+        `).join("");
+
+        if (select) {
+            select.innerHTML = `<option value="">Select Supplier</option>` + 
+                result.data.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+        }
+    }
+}
+
+async function handleAddSupplier(e) {
+    e.preventDefault();
+    const payload = {
+        name: document.getElementById("supName").value,
+        contact_person: document.getElementById("supContact").value,
+        email: document.getElementById("supEmail").value,
+        phone: document.getElementById("supPhone").value,
+        address: document.getElementById("supAddress").value
+    };
+
+    await fetch("../api/pos_system_api.php?action=add_supplier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    loadSuppliers();
+}
+
+// 4. POS / Sales Management
+function addCartItem(productId, name, price) {
+    const existing = posCart.find(item => item.product_id === productId);
+    if (existing) {
+        existing.quantity += 1;
+    } else {
+        posCart.push({ product_id: productId, name, price, quantity: 1 });
+    }
+    renderPOSCart();
+}
+
+function renderPOSCart() {
+    const tbody = document.getElementById("posCartBody");
+    if (!tbody) return;
+
+    if (posCart.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">Cart is empty</td></tr>`;
+        document.getElementById("posSubtotal").innerText = "$0.00";
+        document.getElementById("posTax").innerText = "$0.00";
+        document.getElementById("posTotal").innerText = "$0.00";
+        return;
+    }
+
+    let subtotal = 0;
+    tbody.innerHTML = posCart.map(item => {
+        const lineTotal = item.price * item.quantity;
+        subtotal += lineTotal;
+        return `
+            <tr>
+                <td>${item.name}</td>
+                <td class="text-center">${item.quantity}</td>
+                <td class="text-end">$${item.price.toFixed(2)}</td>
+                <td class="text-end fw-bold">$${lineTotal.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join("");
+
+    const tax = subtotal * 0.08;
+    const total = subtotal + tax;
+
+    document.getElementById("posSubtotal").innerText = `$${subtotal.toFixed(2)}`;
+    document.getElementById("posTax").innerText = `$${tax.toFixed(2)}`;
+    document.getElementById("posTotal").innerText = `$${total.toFixed(2)}`;
+}
+
+async function handlePOSCheckout() {
+    if (posCart.length === 0) {
+        alert("Please add items to cart before checkout!");
+        return;
+    }
+
+    const res = await fetch("../api/pos_system_api.php?action=checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cart: posCart })
+    });
+    const result = await res.json();
+
+    if (result.status === "success") {
+        alert("Transaction completed successfully!");
+        posCart = [];
+        renderPOSCart();
+        loadInventory();
+    } else {
+        alert("Error: " + result.message);
+    }
+}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/admin-system.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////CONFIG.PHP
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+
+$host     = 'localhost';
+$dbname   = 'pos_accounting';
+$username = 'root';
+$password = '';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    echo json_encode(['status' => 'error', 'message' => 'Database connection failed: ' . $e->getMessage()]);
+    exit;
+}
+?>
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////////API.LOGIN
+<?php
+require_once 'config.php';
+session_start();
+
+$data = json_decode(file_get_contents('php://input'), true);
+
+$username = trim($data["username"] ?? '');
+$password = $data["password"] ?? ''; 
+
+if (empty($username) || empty($password)) {
+    echo json_encode(['success' => false, 'message' => 'Username and password are required.']);
+    exit;
+}
+
+$stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username AND is_active = 1");
+$stmt->execute([':username' => $username]);
+$user = $stmt->fetch();
+
+if ($user && password_verify($password, $user['password_hash'])) {
+    $_SESSION['user_id']   = $user['id'];
+    $_SESSION['username']  = $user['username'];
+    $_SESSION['full_name'] = $user['full_name'];
+    $_SESSION['role']      = $user['role'];
+
+    $redirectUrl = match($user['role']) {
+        'admin'   => 'pages/admin-dashboard.php',
+        'manager' => 'pages/manager-dashboard.php',
+        'cashier' => 'pages/cashier-dashboard.php',
+        default   => 'index.html'
+    };
+
+    echo json_encode([
+        'success'      => true,
+        'role'         => $user['role'],
+        'full_name'    => $user['full_name'],
+        'redirect_url' => $redirectUrl
+    ]);
+} else {
+    echo json_encode(['success' => false, 'message' => 'Incorrect credentials or account deactivated.']);
+}
+?>
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////LOGIN.JSSS
+document.getElementById('loginForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const roleInput = document.getElementById('role');
+
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+  const role = roleInput.value;
+  let valid = true;
+
+  usernameInput.classList.remove('is-invalid');
+  passwordInput.classList.remove('is-invalid');
+  roleInput.classList.remove('is-invalid');
+
+  if (!username) {
+    usernameInput.classList.add('is-invalid');
+    document.getElementById('usernameError').textContent = 'Username is required.';
+    valid = false;
+  }
+  if (password.length < 3) {
+    passwordInput.classList.add('is-invalid');
+    document.getElementById('passwordError').textContent = 'Password must be at least 3 characters.';
+    valid = false;
+  }
+  if (!role) {
+    roleInput.classList.add('is-invalid');
+    valid = false;
+  }
+
+  if (valid) {
+    try {
+      const response = await fetch('api/login.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        window.location.href = data.redirect_url;
+      } else {
+        usernameInput.classList.add('is-invalid');
+        document.getElementById('usernameError').textContent = data.message || 'Login failed.';
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      alert('Error connecting to authentication API.');
+    }
+  }
+});
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////SUPPLIERS, TRANSACTIONS, ACCOUNTS, INVENTORY
+<?php
+require_once 'config.php';
+session_start();
+
+$action = $_GET['action'] ?? '';
+$method = $_SERVER['REQUEST_METHOD'];
+
+switch ($action) {
+
+    // ----------------------------------------------------
+    // 1. ACCOUNT MANAGEMENT
+    // ----------------------------------------------------
+    case 'get_users':
+        $stmt = $pdo->query("SELECT id, username, full_name, role, email, is_active FROM users ORDER BY id DESC");
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+        break;
+
+    case 'add_user':
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $pdo->prepare("INSERT INTO users (username, password_hash, full_name, role, email) VALUES (:username, :hash, :full_name, :role, :email)");
+        $stmt->execute([
+            ':username'  => $data['username'],
+            ':hash'      => password_hash($data['password'] ?? 'password123', PASSWORD_DEFAULT),
+            ':full_name' => $data['full_name'],
+            ':role'      => $data['role'],
+            ':email'     => $data['email'] ?? null
+        ]);
+        echo json_encode(['status' => 'success', 'message' => 'User created successfully']);
+        break;
+
+    case 'toggle_user':
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $pdo->prepare("UPDATE users SET is_active = NOT is_active WHERE id = :id");
+        $stmt->execute([':id' => $data['user_id']]);
+        echo json_encode(['status' => 'success', 'message' => 'Status toggled']);
+        break;
+
+    // ----------------------------------------------------
+    // 2. INVENTORY MANAGEMENT
+    // ----------------------------------------------------
+    case 'get_products':
+        $stmt = $pdo->query("
+            SELECT p.*, s.name AS supplier_name 
+            FROM products p 
+            LEFT JOIN suppliers s ON p.supplier_id = s.id 
+            ORDER BY p.id DESC
+        ");
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+        break;
+
+    case 'add_product':
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $pdo->prepare("INSERT INTO products (barcode, name, category, price, stock_qty, reorder_level, supplier_id) VALUES (:barcode, :name, :category, :price, :stock, :reorder, :supplier)");
+        $stmt->execute([
+            ':barcode'  => $data['barcode'],
+            ':name'     => $data['name'],
+            ':category' => $data['category'] ?? 'General',
+            ':price'    => $data['price'],
+            ':stock'    => $data['stock_qty'],
+            ':reorder'  => $data['reorder_level'] ?? 5,
+            ':supplier' => $data['supplier_id'] ?: null
+        ]);
+        echo json_encode(['status' => 'success', 'message' => 'Product saved successfully']);
+        break;
+
+    case 'restock_product':
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $pdo->prepare("UPDATE products SET stock_qty = stock_qty + :qty WHERE id = :id");
+        $stmt->execute([':qty' => $data['quantity'], ':id' => $data['product_id']]);
+        
+        $logStmt = $pdo->prepare("INSERT INTO restock_log (product_id, quantity, note) VALUES (:id, :qty, :note)");
+        $logStmt->execute([':id' => $data['product_id'], ':qty' => $data['quantity'], ':note' => 'Restocked via admin UI']);
+        
+        echo json_encode(['status' => 'success', 'message' => 'Restocked successfully']);
+        break;
+
+    // ----------------------------------------------------
+    // 3. SUPPLIER MANAGEMENT
+    // ----------------------------------------------------
+    case 'get_suppliers':
+        $stmt = $pdo->query("SELECT * FROM suppliers ORDER BY id DESC");
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+        break;
+
+    case 'add_supplier':
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address) VALUES (:name, :contact, :phone, :email, :address)");
+        $stmt->execute([
+            ':name'    => $data['name'],
+            ':contact' => $data['contact_person'] ?? null,
+            ':phone'   => $data['phone'] ?? null,
+            ':email'   => $data['email'] ?? null,
+            ':address' => $data['address'] ?? null
+        ]);
+        echo json_encode(['status' => 'success', 'message' => 'Supplier added']);
+        break;
+
+    // ----------------------------------------------------
+    // 4. TRANSACTION / SALES / POS
+    // ----------------------------------------------------
+    case 'checkout':
+        $data = json_decode(file_get_contents('php://input'), true);
+        $cart = $data['cart'] ?? [];
+        $cashierId = $_SESSION['user_id'] ?? null;
+
+        if (empty($cart)) {
+            echo json_encode(['status' => 'error', 'message' => 'Cart is empty']);
+            exit;
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $subtotal = 0;
+            foreach ($cart as $item) {
+                $subtotal += $item['price'] * $item['quantity'];
+            }
+            $taxAmt = $subtotal * 0.08;
+            $total  = $subtotal + $taxAmt;
+
+            // 1. Save Transaction
+            $txnStmt = $pdo->prepare("INSERT INTO transactions (cashier_id, subtotal, tax_amt, total, payment_method) VALUES (:cashier, :subtotal, :tax, :total, 'cash')");
+            $txnStmt->execute([
+                ':cashier'  => $cashierId,
+                ':subtotal' => $subtotal,
+                ':tax'      => $taxAmt,
+                ':total'    => $total
+            ]);
+            $txnId = $pdo->lastInsertId();
+
+            // 2. Save Items & Deduct Stock
+            $itemStmt  = $pdo->prepare("INSERT INTO transaction_items (transaction_id, product_id, quantity, unit_price, line_total) VALUES (:tx_id, :prod_id, :qty, :price, :line_total)");
+            $stockStmt = $pdo->prepare("UPDATE products SET stock_qty = stock_qty - :qty WHERE id = :prod_id");
+
+            foreach ($cart as $item) {
+                $lineTotal = $item['price'] * $item['quantity'];
+                $itemStmt->execute([
+                    ':tx_id'      => $txnId,
+                    ':prod_id'    => $item['product_id'],
+                    ':qty'        => $item['quantity'],
+                    ':price'      => $item['price'],
+                    ':line_total' => $lineTotal
+                ]);
+                $stockStmt->execute([
+                    ':qty'     => $item['quantity'],
+                    ':prod_id' => $item['product_id']
+                ]);
+            }
+
+            $pdo->commit();
+            echo json_encode(['status' => 'success', 'message' => 'Checkout complete!', 'transaction_id' => $txnId]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo json_encode(['status' => 'error', 'message' => 'Transaction failed: ' . $e->getMessage()]);
+        }
+        break;
+
+    default:
+        echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
+        break;
+}
+?>
+
+
+
+
+
+
+
+
+
