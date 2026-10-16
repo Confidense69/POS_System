@@ -26,13 +26,15 @@ M3 — REAL LOGIN (tasks 4-9)
          admin/manager/cashier-dashboard.php each start with the php guard -> header('Location: ../index.html') + exit
          when not logged in; role/full_name echoed from $_SESSION; Logout -> ../api/logout.php
          verified: all three return HTTP 302 with no session; manager login renders role "manager" + "Liam"
-- [ ] 7. Delete stale pages/*.html (admin/manager/cashier-dashboard.html)  [AI with user's OK]
+- [x] 7. Deleted stale pages/*.html shells (admin/manager/cashier-dashboard.html) (10/16, commit 59ca10c)
+         They were the ORIGINAL First-Commit dashboards; login.js still pointed at them until 872a9de.
 - [~] 8. Full loop test: curl-verified login -> dashboard (302 without session / 200 with) -> logout 302 (10/16).
-         Still to do: browser click-through for all 3 roles.
+         Browser: cashier login -> cashier-dashboard.php CONFIRMED (10/16, private window).
+         Still to do: browser click-through for admin + manager.
 - [ ] 9. Teach-back: explain login.php + one guard line-by-line (Kyle)
 
 NEXT SESSION FLOW (contract): micro-drills if needed -> teach-back login.php + a guard ->
-task 7 (delete stale .html) -> browser loop test -> NOTES.md update.
+browser click-through (admin + manager) -> then start M4+.
 
 REMINDERS
 - PowerShell API test: JSON must be in a FILE, not inline (quotes get stripped).
@@ -44,6 +46,11 @@ REMINDERS
   A guard = an actual `<?php session_start(); if(!isset($_SESSION['user_id']))...` block. READ the file.
 - Never write .php via PowerShell `Out-File -Encoding utf8` (adds a BOM -> "headers already sent").
 - Only 3 roles exist: admin, manager, cashier (DB ENUM + pos.png checklist agree).
+- BROWSER CACHE HIDES EDITS (10/16): Firefox/Chrome had cached the month-old js/login.js (which
+  routed to pages\*-dashboard.html) AND the .html pages themselves. So login kept landing on .html
+  and the DELETED .html files still "worked" with NO 404 — the browser never asked Apache.
+  Always test in a PRIVATE/incognito window; hard-reload (Ctrl+Shift+R) after frontend edits.
+  When files seem to exist after deletion: curl the URL + check access.log BEFORE theorising.
 
 M4+ (scope from pos.png checklist — the sheet itself still says "Not Started" on all rows)
 - POS: keyboard-only cashiering; configurable tax (12/16/20%); PWD/Senior discounts w/ ID field;

@@ -18,6 +18,7 @@
           Require all granted
       </Directory>
 - Live Server (port 5500) RETIRED for this app; the browser now just hits http://localhost/pos/
+  (10/16 note: the Live Server PROCESS was still running on :5500 and serves .php as raw TEXT — close it.)
 
 ## Core mental model (internalized)
 browser JS --fetch()--> PHP endpoint --PDO/SQL--> MySQL, JSON back.
@@ -34,8 +35,11 @@ CORS solved once in config.php via: header('Access-Control-Allow-Origin: *');  (
 - index.html + js\login.js  -> REAL auth now: POSTs to api/login.php, routes via data.role (10/16)
 - js\login.js does NOT read the role dropdown anymore (dropdown deleted 10/16)
 - pages\admin-dashboard.php  -> guarded + working (groupmate UI grafted onto our shell, @M3 kept)
-- pages\manager-dashboard.php / cashier-dashboard.php -> STILL shells: NO guard, hardcoded role,
-                      Logout -> ../index.html. Tasks 6 open for these two.
+- pages\manager-dashboard.php / cashier-dashboard.php -> guarded + working (10/16): same php guard
+                      as admin, real $_SESSION role/full_name echoed, Logout -> ../api/logout.php
+- pages\*-dashboard.html -> DELETED (10/16, commit 59ca10c). Were the ORIGINAL First-Commit shells
+                      (mock login routed straight to them); unreferenced, unguarded, and duplicated
+                      by the .php versions. Recoverable from git history if ever needed.
 - js\admin-system.js -> GROUP's admin dashboard client logic (accounts/inventory/suppliers/POS)
 - js\cashier-pos.js  -> WORKING barcode flow: input -> fetch api/products.php?barcode= -> render <tr> rows
 - css\style.css, database.sql (schema for everything: users, products, transactions, items, restock_log, employees, salaries, system_logs)
@@ -82,6 +86,12 @@ CORS solved once in config.php via: header('Access-Control-Allow-Origin: *');  (
 - AI may do CSS / page shells only (design is delegated, interface contract stays mine).
 - Every session starts with micro-drills (tiny 5-15min one-concept programs).
 - Every milestone ends with teach-back: user explains each file line-by-line.
+
+## M3 STATUS (10/16): essentially COMPLETE
+Done: real login (api/login.php), logout, hashed seed passwords, js/login.js POST + role routing,
+role dropdown removed, all three dashboard guards + $_SESSION echoes, stale .html removed.
+Left: task 9 teach-back (Kyle explains login.php + one guard line-by-line) and a browser
+click-through for the admin + manager roles (cashier already confirmed). Then M4+ begins.
 
 ## NEXT GOAL: M3 — real login
 - PHP sessions (server remembers who you are across requests; session_start, $_SESSION, logout = session_destroy)
@@ -143,6 +153,12 @@ role "manager" and the real full_name. (Earlier a grep gave a FALSE POSITIVE her
 string session_start() appears inside the @M3 instruction comment — see Lessons below.)
 
 ## Lessons (10/16 session)
+- BROWSER CACHE vs "the file still exists": after deleting pages\*-dashboard.html the files still
+  opened with NO 404. Cause: Firefox had cached the month-old js/login.js (routing to .html) AND the
+  .html pages, so it never contacted Apache. Proof that settled it: curl got 404, access.log showed
+  no fresh browser hit for the .html, and the /pos Alias meant there was no second copy on disk.
+  RULE: test in a private window; when files "survive" deletion, curl the URL + read access.log
+  BEFORE theorising about where they live.
 - GREP/SUBSTRING LIES: a check for `session_start()` matched the text inside an @M3 COMMENT,
   so it reported a guard that did not exist. To verify code, READ the file; don't grep for a
   token that can appear in prose. (Same class of bug as trusting a mental model over the diff.)
