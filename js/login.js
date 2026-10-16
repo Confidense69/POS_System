@@ -1,42 +1,54 @@
 // POS Accounting System - Login page client-side logic
-// NOTE: Static demo only. Replace with real backend auth later once decided what it is  or somethin.
+// POSTs to api/login.php (same origin, served by Apache at /pos/).
+// Reply contract (see NOTES.md): { success: true, role, full_name }
+//   -> role comes from the DB; route to pages/<role>-dashboard.php
+// The account-type dropdown in index.html is no longer required.
 
-document.getElementById('loginForm').addEventListener('submit', function (e) {
+document.getElementById('loginForm').addEventListener('submit', async function (e) {
   e.preventDefault();
 
-  var username = document.getElementById('username').value.trim();
-  var password = document.getElementById('password').value;
-  var role = document.getElementById('role').value;
-  var valid = true;
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const roleInput = document.getElementById('role'); // may be removed (task 4)
+
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
 
   // Reset errors
-  document.getElementById('username').classList.remove('is-invalid');
-  document.getElementById('password').classList.remove('is-invalid');
-  document.getElementById('role').classList.remove('is-invalid');
+  usernameInput.classList.remove('is-invalid');
+  passwordInput.classList.remove('is-invalid');
+  if (roleInput) roleInput.classList.remove('is-invalid');
 
   // Validate
+  let valid = true;
   if (!username) {
-    document.getElementById('username').classList.add('is-invalid');
+    usernameInput.classList.add('is-invalid');
     document.getElementById('usernameError').textContent = 'Username is required.';
     valid = false;
   }
   if (password.length < 3) {
-    document.getElementById('password').classList.add('is-invalid');
+    passwordInput.classList.add('is-invalid');
     document.getElementById('passwordError').textContent = 'Password must be at least 3 characters.';
     valid = false;
   }
-  if (!role) {
-    document.getElementById('role').classList.add('is-invalid');
-    valid = false;
-  }
+  if (!valid) return;
 
-  if (valid) {
-    // Route to the appropriate dashboard shell based on role
-    var pages = {
-      admin:   'pages/admin-dashboard.html',
-      manager: 'pages/manager-dashboard.html',
-      cashier: 'pages/cashier-dashboard.html'
-    };
-    window.location.href = pages[role];
+  try {
+    const response = await fetch('api/login.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password })
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      window.location.href = 'pages/' + data.role + '-dashboard.php';
+    } else {
+      usernameInput.classList.add('is-invalid');
+      document.getElementById('usernameError').textContent = data.message || 'Login failed.';
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    alert('Could not reach the authentication API. Is Apache running at /pos/?');
   }
 });

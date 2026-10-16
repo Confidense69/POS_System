@@ -3,10 +3,15 @@ require 'config.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 
-$username = $data["username"] ?? '';
+$username = trim($data["username"] ?? '');
 $password = $data["password"] ?? ''; 
 
 
+
+if ($username === '' || $password === '') {
+    echo json_encode(['success' => false, 'message' => 'Username and password are required.']);
+    exit;
+}
 
 $stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username AND is_active = 1");
 $stmt->execute([':username' => $username]);
