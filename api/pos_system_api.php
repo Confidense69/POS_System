@@ -2,6 +2,13 @@
 require_once 'config.php';
 session_start();
 
+// @M3-style guard: reject unauthenticated API calls (login.php must set $_SESSION['user_id'])
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['status' => 'error', 'message' => 'Not authenticated']);
+    exit;
+}
+
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 

@@ -8,7 +8,7 @@ $password = $data["password"] ?? '';
 
 
 
-$stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username");
+$stmt = $pdo->prepare("SELECT * FROM users WHERE username = :username AND is_active = 1");
 $stmt->execute([':username' => $username]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
