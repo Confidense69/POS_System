@@ -25,13 +25,24 @@ Browser can't touch MySQL directly; PHP is the middleman.
 CORS solved once in config.php via: header('Access-Control-Allow-Origin: *');  (now same-origin, header is harmless)
 
 ## Files that exist
-- api\config.php   -> PDO connection helper (root/no password), JSON + CORS headers
+- api\config.php   -> PDO connection helper (root/no password), JSON + CORS headers,
+                      default fetch mode = PDO::FETCH_ASSOC (added 10/16)
 - api\products.php -> GET all products, OR ?barcode= single product
-- index.html + js\login.js  (static login, routes by role dropdown — NOT real auth yet)
-- pages\admin-dashboard.php / manager-dashboard.php / cashier-dashboard.php  (shells w/ @M3 guard markers)
+- api\pos_system_api.php -> GROUP's action endpoint (get/add users, products, suppliers, checkout).
+                      Reply key `status`; requires a session (401 otherwise). See groupmate\README.md
+- api\login.php / api\logout.php -> real auth (POST JSON in, session out; logout = 302 to index.html)
+- index.html + js\login.js  -> REAL auth now: POSTs to api/login.php, routes via data.role (10/16)
+- js\login.js does NOT read the role dropdown anymore (dropdown deleted 10/16)
+- pages\admin-dashboard.php  -> guarded + working (groupmate UI grafted onto our shell, @M3 kept)
+- pages\manager-dashboard.php / cashier-dashboard.php -> STILL shells: NO guard, hardcoded role,
+                      Logout -> ../index.html. Tasks 6 open for these two.
+- js\admin-system.js -> GROUP's admin dashboard client logic (accounts/inventory/suppliers/POS)
 - js\cashier-pos.js  -> WORKING barcode flow: input -> fetch api/products.php?barcode= -> render <tr> rows
 - css\style.css, database.sql (schema for everything: users, products, transactions, items, restock_log, employees, salaries, system_logs)
+- assignments\ -> out of tree: groupmate's unrelated Tailwind "OmniSystem Hub" homework (duplicate pair)
+- groupmate\ -> reference copies of his rewrites (config/login/login.js) + 4-modules-original.txt + README.md
 - .gitignore (OS junk + secrets protection), todolist.txt (live M3 task list), NOTES.md (this file)
+- pos.png -> the Excel-style feature checklist (modules: Backend/Foundation, POS, Inventory, HR/Payroll, Reports, UI/UX; roles: admin/manager/cashier)
 
 ## Milestones DONE
 - M1: DB connected, products.php returns 4 seeded products as JSON
@@ -103,3 +114,44 @@ CORS solved once in config.php via: header('Access-Control-Allow-Origin: *');  (
 
 ## Barcode test values (seeded products)
 4800012345678 Rice · 4800012345679 Cooking Oil · 4800012345680 Coke · 4800012345681 Pancit Canton
+
+## GROUP CONTRIBUTION MERGE (10/16)
+Groupmate pushed an extensionless file literally named `4 modules` (commit f8e4e4b) plus two
+byte-identical copies of an unrelated Tailwind assignment. `4 modules` was SIX source files
+pasted together under `/////` banner comments (his dashboard HTML, his admin JS, and his versions
+of config.php / login.php / login.js, plus a new action API).
+- Split into real files; took only the genuinely NEW work:
+  api\pos_system_api.php and js\admin-system.js (schema-verified against database.sql).
+- admin-dashboard.php: his working dashboard was grafted onto OUR placeholder shell; our @M3
+  markers and extra sidebar links (Payroll/Reports/System Logs, disabled) were kept.
+- His REWRITES of config.php / login.php / js/login.js were NOT dropped in — kept in groupmate\.
+- Cherry-picked from them, adapted to OUR contract: PDO::FETCH_ASSOC default (config), the
+  `AND is_active = 1` login filter, trim + empty-input check, and a real POST login.js that
+  routes by data.role. Rejected his `redirect_url` field (our contract is `success` + `role`).
+- Added the missing auth guard to pos_system_api.php (it called session_start() but never
+  checked the user) -> 401 when no session.
+- Moved `Another task` + `pages/Sir Jewel assingment` to assignments\ (unrelated Tailwind demo).
+- Done on branch `groupmate-additions`, fast-forwarded into main, pushed.
+
+## SECURITY HOLE STILL OPEN (10/16)
+pages\manager-dashboard.php and pages\cashier-dashboard.php have NO session guard. Verified:
+GET http://localhost/pos/pages/manager-dashboard.php -> HTTP 200 with no session.
+Their role/full_name are hardcoded ("Manager"/"Cashier") and Logout points at ../index.html.
+Only admin-dashboard.php is guarded (302 -> ../index.html when not logged in).
+FIX = paste the same 3-line php block at the very top of both files (before <!DOCTYPE html>),
+echo $_SESSION['role']/['full_name'], and point Logout at ../api/logout.php.
+
+## Lessons (10/16 session)
+- GREP/SUBSTRING LIES: a check for `session_start()` matched the text inside an @M3 COMMENT,
+  so it reported a guard that did not exist. To verify code, READ the file; don't grep for a
+  token that can appear in prose. (Same class of bug as trusting a mental model over the diff.)
+- Read the diff: "extra </div>" was real; removing the dropdown block also removed it, and the
+  balance check (open vs close counts) is what actually settled it. Count, don't eyeball.
+- PowerShell `Out-File/-Encoding utf8` (PS 5.1) writes a UTF-8 BOM at the top of the file.
+  A BOM on a .php file = bytes emitted before headers -> "headers already sent", broken
+  session_start()/header(). Write files with UTF8Encoding($false) instead.
+- git branch is a movable LABEL, not a separate copy of the project. On the branch, its files
+  ARE the project; main just has not been moved yet. Merging = moving the label forward.
+- PDO::FETCH_BOTH (the default without setAttribute) returns every column TWICE in the JSON
+  ({"id":4,"0":4}). One setAttribute line fixes every endpoint that uses bare fetchAll().
+- Roles are only admin / manager / cashier — the DB ENUM and the pos.png checklist agree.

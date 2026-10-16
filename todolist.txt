@@ -11,28 +11,47 @@ DONE
 - M3 task 1: passwords hashed (api/hash_user.php seeder) — keeps DB hashes valid on every machine
 - M3 task 2: api/login.php WRITTEN + VALIDATED (admin/password123 -> {"success":true,...})
 - M3 task 3: api/logout.php written + verified (HTTP 302 -> /pos/index.html)
+- M3 task 4: role dropdown REMOVED from index.html (10/16)
+- M3 task 5: js/login.js REWRITTEN: POST JSON -> api/login.php, reads `success`, routes via data.role (10/16)
+- GROUP (10/16): split groupmate's "4 modules" paste -> api/pos_system_api.php + js/admin-system.js;
+  merged on branch groupmate-additions, fast-forwarded into main, pushed. His rewrites of
+  config.php / login.php / js/login.js were NOT dropped in; copies kept in groupmate/ for reference.
+- GROUP (10/16): api/config.php now sets PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+  (fixes duplicate numeric keys like {"id":4,"0":4}).
 
-M3 — REAL LOGIN (in progress at task 4)
-- [ ] 4. index.html: remove the role dropdown (role comes from DB now) — remove the <!-- Role --> div block
-- [ ] 5. Rewrite js/login.js: POST JSON to /pos/api/login.php (read key `success`),
-         then window.location.href = 'pages/' + data.role + '-dashboard.php'
-- [ ] 6. Add session guard + echo $_SESSION at the @M3 markers in all three pages/*.php
-         guard: session_start(); if (!isset($_SESSION['user_id'])) { header('Location: ../index.html'); exit; }
-         echoes: $_SESSION['full_name'], $_SESSION['role'] (login.php stores them)
-         Logout link -> http://localhost/pos/api/logout.php
-- [ ] 7. Delete stale pages/*.html (after login routes to .php work)  [AI with user's OK]
-- [ ] 8. Test admin/password123 -> Admin dashboard -> logout -> bounced to index.html
-- [ ] 9. Teach-back: explain login.php + one guard line-by-line
+M3 — REAL LOGIN (tasks 4-9)
+- [x] 4. role dropdown removed from index.html
+- [x] 5. js/login.js posts to api/login.php, routes by data.role
+- [~] 6. session guard + $_SESSION echoes at the @M3 markers — **PARTIAL**
+         admin-dashboard.php   -> DONE (guard + role/full_name echoes + Logout -> api/logout.php)
+         manager-dashboard.php -> NOT DONE (no php guard block; role/full_name HARDCODED; Logout -> ../index.html)
+         cashier-dashboard.php -> NOT DONE (same as manager)
+         ** SECURITY HOLE: both root URLs load with HTTP 200 and NO session (verified 10/16). **
+- [ ] 7. Delete stale pages/*.html (admin/manager/cashier-dashboard.html)  [AI with user's OK]
+- [~] 8. Full loop test: curl-verified login -> dashboard (302 without session / 200 with) -> logout 302 (10/16).
+         Still to do: browser click-through for all 3 roles.
+- [ ] 9. Teach-back: explain login.php + one guard line-by-line (Kyle)
 
-NEXT SESSION FLOW (contract): micro-drills if needed -> recall login.php from memory ->
-finish tasks 4-9 -> commit yourself -> NOTES.md teach-back.
+NEXT SESSION FLOW (contract): micro-drills if needed -> teach-back login.php + a guard ->
+finish task 6 for manager/cashier -> task 7 -> browser loop test -> NOTES.md update.
 
 REMINDERS
 - PowerShell API test: JSON must be in a FILE, not inline (quotes get stripped).
   curl.exe -s -X POST -H "Content-Type: application/json" -d @body.json http://localhost/pos/api/login.php
 - api files live in repo -> http://localhost/pos/api/...
 - login.php reply key is `success`; $_SESSION keys: user_id, username, full_name, role
+- pos_system_api.php reply key is `status`; it REQUIRES a session (401 without one)
+- GREP LIES: `session_start()` inside an @M3 COMMENT matched a "guard exists" check.
+  A guard = an actual `<?php session_start(); if(!isset($_SESSION['user_id']))...` block. READ the file.
+- Never write .php via PowerShell `Out-File -Encoding utf8` (adds a BOM -> "headers already sent").
+- Only 3 roles exist: admin, manager, cashier (DB ENUM + pos.png checklist agree).
 
-M4+ (later)
-- Checkout/charge: subtotal->discount->tax->total, save transaction to DB
-- Inventory restock, reports/dashboard stats, payroll (per the Excel checklist)
+M4+ (scope from pos.png checklist — the sheet itself still says "Not Started" on all rows)
+- POS: keyboard-only cashiering; configurable tax (12/16/20%); PWD/Senior discounts w/ ID field;
+  QR display-only for GCash/Maya/MayaBank; soft-copy receipt UI
+- Inventory: restock logging (DONE via pos_system_api.php?action=restock_product);
+  low-stock + expiration alerts; supplier add/edit/deactivate (add/view done)
+- HR/Payroll: gross -> deductions -> net pay per employee per period
+- Reports/Dashboard: per-role dashboard summary; system logs (admin-only viewer);
+  sales/salary/losses reports + simple income statement (Revenue - Expenses)
+- UI/UX: responsive manager view
