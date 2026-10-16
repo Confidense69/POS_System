@@ -1,5 +1,11 @@
-<!-- @M3 PLACE SESSION GUARD HERE: the php block must be the FIRST thing in this file,
-     before <!DOCTYPE html>. Guard: session_start(); if not logged in, header() redirect to ../index.html + exit; -->
+<?php
+// @M3 session guard (implemented 10/16): must be the FIRST thing in the file, before <!DOCTYPE html>.
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ../index.html');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +25,7 @@
         <div class="brand-badge-sm">POS</div>
         <span>Accounting Sys</span>
       </div>
-      <span class="role-tag align-self-start mb-3">Manager<!-- @M3: echo $_SESSION['role'] here --></span>
+      <span class="role-tag align-self-start mb-3"><?php echo htmlspecialchars($_SESSION['role'] ?? 'Manager'); ?></span>
       <ul class="nav nav-pills flex-column gap-1">
         <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
         <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-box-seam"></i> Products / Inventory</a></li>
@@ -28,14 +34,14 @@
         <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-cash-coin"></i> Payroll</a></li>
         <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-graph-up"></i> Reports</a></li>
       </ul>
-      <a href="../index.html" class="btn btn-outline-light mt-auto btn-sm">Logout<!-- @M3: point this at api/logout.php --></a>
+      <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
     </aside>
 
     <!-- Main -->
     <main class="main-content">
       <nav class="navbar navbar-custom px-4 py-3">
         <h1 class="h5 mb-0 fw-bold">Manager Dashboard</h1>
-        <span class="text-muted small">Logged in as <strong>Manager<!-- @M3: echo $_SESSION['full_name'] here --></strong></span>
+        <span class="text-muted small">Logged in as <strong><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Manager'); ?></strong></span>
       </nav>
 
       <div class="p-4">

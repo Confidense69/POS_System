@@ -133,13 +133,14 @@ of config.php / login.php / login.js, plus a new action API).
 - Moved `Another task` + `pages/Sir Jewel assingment` to assignments\ (unrelated Tailwind demo).
 - Done on branch `groupmate-additions`, fast-forwarded into main, pushed.
 
-## SECURITY HOLE STILL OPEN (10/16)
-pages\manager-dashboard.php and pages\cashier-dashboard.php have NO session guard. Verified:
-GET http://localhost/pos/pages/manager-dashboard.php -> HTTP 200 with no session.
-Their role/full_name are hardcoded ("Manager"/"Cashier") and Logout points at ../index.html.
-Only admin-dashboard.php is guarded (302 -> ../index.html when not logged in).
-FIX = paste the same 3-line php block at the very top of both files (before <!DOCTYPE html>),
-echo $_SESSION['role']/['full_name'], and point Logout at ../api/logout.php.
+## SECURITY HOLE — FIXED (10/16)
+pages\manager-dashboard.php and pages\cashier-dashboard.php originally had NO session guard
+(both returned HTTP 200 with no session). FIXED: each now opens with the same php block as admin
+(session_start + header('Location: ../index.html') + exit when $_SESSION['user_id'] is unset),
+echoes $_SESSION['role']/['full_name'], and Logout points at ../api/logout.php.
+Verified: all three pages now return HTTP 302 with no session; a manager login renders
+role "manager" and the real full_name. (Earlier a grep gave a FALSE POSITIVE here because the
+string session_start() appears inside the @M3 instruction comment — see Lessons below.)
 
 ## Lessons (10/16 session)
 - GREP/SUBSTRING LIES: a check for `session_start()` matched the text inside an @M3 COMMENT,

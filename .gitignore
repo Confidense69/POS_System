@@ -10,3 +10,6 @@ vendor/
 # local environment only — never these
 .env
 *.local.php
+
+# local reference captures (feature checklist screenshot, not app assets)
+pos.png
