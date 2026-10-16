@@ -37,6 +37,9 @@ NEXT SESSION FLOW (contract): micro-drills if needed -> teach-back login.php + a
 browser click-through (admin + manager) -> then start M4+.
 
 REMINDERS
+- WORKING AGREEMENT (10/16, "Rule A"): USER = ALL backend (PHP + SQL). AI = ALL frontend (HTML/CSS/JS).
+- Groupmate can't pull/push (re-downloads + pastes whole files). Kyle owns main; accept only NEW
+  files/diffs, never a full-tree drop — re-verify each incoming file against ours before merging.
 - PowerShell API test: JSON must be in a FILE, not inline (quotes get stripped).
   curl.exe -s -X POST -H "Content-Type: application/json" -d @body.json http://localhost/pos/api/login.php
 - api files live in repo -> http://localhost/pos/api/...

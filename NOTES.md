@@ -79,11 +79,12 @@ CORS solved once in config.php via: header('Access-Control-Allow-Origin: *');  (
 - Computing a value ≠ displaying it: `parseFloat(p.price).toFixed(2)` builds a string and discards it unless you assign `cell.textContent = ...`. (Name cell worked; price cells were empty for this exact reason.)
 - http vs https: XAMPP/dev = plain `http`. `https` is production-with-certificates. Error strings quote the offender; just read them.
 
-## The LEARNING WORKFLOW (user's contract with any AI)
-- I (user) write ALL the JS/PHP/SQL myself.
-- AI gives STEP DECOMPOSITION + POINTERS (e.g. "look up encodeURIComponent on MDN"),
-  NOT finished code. No copy-paste answers.
-- AI may do CSS / page shells only (design is delegated, interface contract stays mine).
+## WORKING AGREEMENT (updated 10/16 — "Rule A")
+- USER writes ALL BACKEND: PHP endpoints + SQL (the graded part).
+- AI writes ALL FRONTEND: HTML, CSS, and the JavaScript that renders/calls the API.
+- Supersedes the older "user writes ALL JS/PHP/SQL" rule. Spirit is unchanged: AI never
+  invents backend logic behind the user's back, and must explain each backend change in plain
+  terms so the user can defend it in a teach-back.
 - Every session starts with micro-drills (tiny 5-15min one-concept programs).
 - Every milestone ends with teach-back: user explains each file line-by-line.
 
@@ -141,6 +142,11 @@ of config.php / login.php / login.js, plus a new action API).
 - Added the missing auth guard to pos_system_api.php (it called session_start() but never
   checked the user) -> 401 when no session.
 - Moved `Another task` + `pages/Sir Jewel assingment` to assignments\ (unrelated Tailwind demo).
+- WHY it arrived as one pasted file: the groupmate does NOT pull/push. He re-DOWNLOADS the repo,
+  edits locally, then pastes whole files back. So his copy silently diverges from main and can
+  clobber our work (he has none of the PHP/auth/guard work). POLICY going forward: Kyle owns main;
+  accept only the specific files that are genuinely NEW (or a diff), NEVER a full-tree drop, and
+  re-verify every incoming file against our version before merging.
 - Done on branch `groupmate-additions`, fast-forwarded into main, pushed.
 
 ## SECURITY HOLE — FIXED (10/16)
