@@ -13,3 +13,7 @@ vendor/
 
 # local reference captures (feature checklist screenshot, not app assets)
 pos.png
+
+# personal handoff notes — kept locally, NOT shared on GitHub
+NOTES.md
+todolist.txt
