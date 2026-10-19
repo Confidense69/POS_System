@@ -39,7 +39,7 @@ switch ($action) {
         $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare("UPDATE users SET is_active = NOT is_active WHERE id = :id");
         $stmt->execute([':id' => $data['user_id']]);
-        echo json_encode(['status' => 'success', 'message' => 'Status toggled']);
+        echo json_encode(['status' => 'success', 'message' => 'User Status toggled']);
         break;
 
     // ----------------------------------------------------
@@ -79,6 +79,13 @@ switch ($action) {
         $logStmt->execute([':id' => $data['product_id'], ':qty' => $data['quantity'], ':note' => 'Restocked via admin UI']);
         
         echo json_encode(['status' => 'success', 'message' => 'Restocked successfully']);
+        break;
+
+    case 'toggle_product':
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $pdo->prepare("UPDATE products SET is_active = NOT is_active WHERE id = :id");
+        $stmt->execute([':id' => $data['product_id']]);
+        echo json_encode(['status' => 'success', 'message' => 'Product Status toggled']);
         break;
 
     // ----------------------------------------------------

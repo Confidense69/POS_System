@@ -59,7 +59,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-success-subtle"><i class="bi bi-cash-coin"></i></div>
-                <div><div class="text-muted small">Today's Sales</div><div class="h5 mb-0">P0.00</div></div>
+                <div><div class="text-muted small">Today's Sales</div><div class="h5 mb-0">&#8369;0.00</div></div>
               </div>
             </div>
           </div>
@@ -112,17 +112,17 @@ if (!in_array($role, $allowed_roles, true)){
               <div class="card-header bg-white fw-semibold">Payment Summary</div>
               <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Subtotal</span><span>P0.00</span>
+                  <span class="text-muted">Subtotal</span><span>&#8369;0.00</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Discount</span><span>P0.00</span>
+                  <span class="text-muted">Discount</span><span>&#8369;0.00</span>
                 </div>
                 <div class="d-flex justify-content-between mb-3">
-                  <span class="text-muted">Tax</span><span>P0.00</span>
+                  <span class="text-muted">Tax</span><span>&#8369;0.00</span>
                 </div>
                 <hr>
                 <div class="d-flex justify-content-between mb-3">
-                  <span class="fw-bold">TOTAL</span><span class="fw-bold">P0.00</span>
+                  <span class="fw-bold">TOTAL</span><span class="fw-bold">&#8369;0.00</span>
                 </div>
                 <button class="btn btn-success w-100" disabled>Charge / Checkout</button>
                 <div class="d-flex gap-2 justify-content-center mt-3">

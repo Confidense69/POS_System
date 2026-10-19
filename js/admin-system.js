@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 let posCart = [];
+let inventoryCache = [];
 
 // 1. Account Management
 async function loadAccounts() {
@@ -71,6 +72,7 @@ async function loadInventory() {
     if (!tbody) return;
 
     if (result.status === "success") {
+        inventoryCache = result.data;
         let lowStockCount = 0;
         tbody.innerHTML = result.data.map(p => {
             const isLow = p.stock_qty <= p.reorder_level;
@@ -81,15 +83,19 @@ async function loadInventory() {
                     <td><code>${p.barcode}</code></td>
                     <td class="fw-bold">${p.name}</td>
                     <td>${p.supplier_name || 'N/A'}</td>
-                    <td>$${parseFloat(p.price).toFixed(2)}</td>
+                    <td>₱${parseFloat(p.price).toFixed(2)}</td>
                     <td>
                         <span class="badge ${isLow ? 'bg-warning text-dark' : 'bg-success'}">
                             ${p.stock_qty} units
                         </span>
                     </td>
                     <td>
+                        <span class="badge ${p.is_active == 1 ? 'bg-success' : 'bg-danger'} me-1">${p.is_active == 1 ? 'Active' : 'Inactive'}</span>
+                        <button class="btn btn-sm btn-outline-danger me-1" onclick="toggleProduct(${p.id})">
+                            ${p.is_active == 1 ? 'Deactivate' : 'Activate'}
+                        </button>
                         <button class="btn btn-sm btn-outline-primary me-1" onclick="restockProduct(${p.id}, 10)">+10 Stock</button>
-                        <button class="btn btn-sm btn-success" onclick="addCartItem(${p.id}, '${p.name}', ${p.price})">+ POS</button>
+                        ${p.is_active == 1 ? `<button class="btn btn-sm btn-success" onclick="addCartItem(${p.id})">+ POS</button>` : ""}
                     </td>
                 </tr>
             `;
@@ -123,6 +129,15 @@ async function restockProduct(productId, qty) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ product_id: productId, quantity: qty })
+    });
+    loadInventory();
+}
+
+async function toggleProduct(productId) {
+    await fetch("../api/pos_system_api.php?action=toggle_product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId })
     });
     loadInventory();
 }
@@ -172,12 +187,15 @@ async function handleAddSupplier(e) {
 }
 
 // 4. POS / Sales Management
-function addCartItem(productId, name, price) {
+function addCartItem(productId) {
+    const product = inventoryCache.find(p => p.id === productId);
+    if (!product) return;
+
     const existing = posCart.find(item => item.product_id === productId);
     if (existing) {
         existing.quantity += 1;
     } else {
-        posCart.push({ product_id: productId, name, price, quantity: 1 });
+        posCart.push({ product_id: productId, name: product.name, price: parseFloat(product.price), quantity: 1 });
     }
     renderPOSCart();
 }
@@ -188,9 +206,9 @@ function renderPOSCart() {
 
     if (posCart.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">Cart is empty</td></tr>`;
-        document.getElementById("posSubtotal").innerText = "$0.00";
-        document.getElementById("posTax").innerText = "$0.00";
-        document.getElementById("posTotal").innerText = "$0.00";
+        document.getElementById("posSubtotal").innerText = "₱0.00";
+        document.getElementById("posTax").innerText = "₱0.00";
+        document.getElementById("posTotal").innerText = "₱0.00";
         return;
     }
 
@@ -202,8 +220,8 @@ function renderPOSCart() {
             <tr>
                 <td>${item.name}</td>
                 <td class="text-center">${item.quantity}</td>
-                <td class="text-end">$${item.price.toFixed(2)}</td>
-                <td class="text-end fw-bold">$${lineTotal.toFixed(2)}</td>
+                <td class="text-end">₱${item.price.toFixed(2)}</td>
+                <td class="text-end fw-bold">₱${lineTotal.toFixed(2)}</td>
             </tr>
         `;
     }).join("");
@@ -211,9 +229,9 @@ function renderPOSCart() {
     const tax = subtotal * 0.08;
     const total = subtotal + tax;
 
-    document.getElementById("posSubtotal").innerText = `$${subtotal.toFixed(2)}`;
-    document.getElementById("posTax").innerText = `$${tax.toFixed(2)}`;
-    document.getElementById("posTotal").innerText = `$${total.toFixed(2)}`;
+    document.getElementById("posSubtotal").innerText = `₱${subtotal.toFixed(2)}`;
+    document.getElementById("posTax").innerText = `₱${tax.toFixed(2)}`;
+    document.getElementById("posTotal").innerText = `₱${total.toFixed(2)}`;
 }
 
 async function handlePOSCheckout() {

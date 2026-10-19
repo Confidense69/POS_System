@@ -28,8 +28,8 @@ async function addByBarCode() {
         const tr = document.createElement('tr');
         const td1 = document.createElement('td');   td1.textContent = p.name
         const tdqty = document.createElement('td'); tdqty.textContent = 1; tdqty.classList.add("text-center");
-        const tdprc = document.createElement('td'); tdprc.textContent = parseFloat(p.price).toFixed(2); tdprc.classList.add("text-end");
-        const tdtot = document.createElement('td'); tdtot.textContent = parseFloat(p.price).toFixed(2); tdtot.classList.add("text-end");
+        const tdprc = document.createElement('td'); tdprc.textContent = '₱' + parseFloat(p.price).toFixed(2); tdprc.classList.add("text-end");
+        const tdtot = document.createElement('td'); tdtot.textContent = '₱' + parseFloat(p.price).toFixed(2); tdtot.classList.add("text-end");
         tr.append(td1, tdqty, tdprc, tdtot);
         tbody.appendChild(tr);
     }

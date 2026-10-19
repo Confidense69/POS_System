@@ -178,10 +178,10 @@ if (!in_array($role, $allowed_roles, true)){
               <div class="card shadow-sm">
                 <div class="card-header bg-white fw-semibold">Payment Summary</div>
                 <div class="card-body">
-                  <div class="d-flex justify-content-between mb-2"><span class="text-muted">Subtotal</span><span id="posSubtotal">$0.00</span></div>
-                  <div class="d-flex justify-content-between mb-3"><span class="text-muted">Tax (8%)</span><span id="posTax">$0.00</span></div>
+                  <div class="d-flex justify-content-between mb-2"><span class="text-muted">Subtotal</span><span id="posSubtotal">&#8369;0.00</span></div>
+                  <div class="d-flex justify-content-between mb-3"><span class="text-muted">Tax (8%)</span><span id="posTax">&#8369;0.00</span></div>
                   <hr>
-                  <div class="d-flex justify-content-between mb-3"><span class="fw-bold">TOTAL</span><span class="fw-bold h5 text-primary mb-0" id="posTotal">$0.00</span></div>
+                  <div class="d-flex justify-content-between mb-3"><span class="fw-bold">TOTAL</span><span class="fw-bold h5 text-primary mb-0" id="posTotal">&#8369;0.00</span></div>
                   <button class="btn btn-success w-100 btn-lg" id="posCheckoutBtn">Checkout &amp; Deduct Stock</button>
                 </div>
               </div>
@@ -204,7 +204,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="mb-2"><label class="form-label">Name</label><input type="text" id="mName" class="form-control" required></div>
             <div class="mb-2"><label class="form-label">Supplier</label><select id="mSupplier" class="form-select"></select></div>
             <div class="row g-2 mb-2">
-              <div class="col-6"><label class="form-label">Price ($)</label><input type="number" step="0.01" id="mPrice" class="form-control" required></div>
+              <div class="col-6"><label class="form-label">Price (&#8369;)</label><input type="number" step="0.01" id="mPrice" class="form-control" required></div>
               <div class="col-6"><label class="form-label">Stock Qty</label><input type="number" id="mStock" class="form-control" required></div>
             </div>
           </div>
