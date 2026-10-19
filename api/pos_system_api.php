@@ -57,15 +57,16 @@ switch ($action) {
 
     case 'add_product':
         $data = json_decode(file_get_contents('php://input'), true);
-        $stmt = $pdo->prepare("INSERT INTO products (barcode, name, category, price, stock_qty, reorder_level, supplier_id) VALUES (:barcode, :name, :category, :price, :stock, :reorder, :supplier)");
+        $stmt = $pdo->prepare("INSERT INTO products (barcode, name, category, price, stock_qty, reorder_level, supplier_id, expiration_date) VALUES (:barcode, :name, :category, :price, :stock, :reorder, :supplier, :expiration_date)");
         $stmt->execute([
             ':barcode'  => $data['barcode'],
             ':name'     => $data['name'],
-            ':category' => $data['category'] ?? 'General',
+            ':category' => (empty($data['category']) ? null : $data['category']),
             ':price'    => $data['price'],
             ':stock'    => $data['stock_qty'],
             ':reorder'  => $data['reorder_level'] ?? 5,
-            ':supplier' => $data['supplier_id'] ?: null
+            ':supplier' => (empty($data['supplier_id']) ? null : $data['supplier_id']),
+            ':expiration_date' => (empty($data['expiration_date']) ? null : $data['expiration_date'])
         ]);
         echo json_encode(['status' => 'success', 'message' => 'Product saved successfully']);
         break;
@@ -86,6 +87,36 @@ switch ($action) {
         $stmt = $pdo->prepare("UPDATE products SET is_active = NOT is_active WHERE id = :id");
         $stmt->execute([':id' => $data['product_id']]);
         echo json_encode(['status' => 'success', 'message' => 'Product Status toggled']);
+        break;
+
+    case 'update_product':
+        $data = json_decode(file_get_contents('php://input'), true);
+        if(empty($data['product_id']) || empty($data['barcode']) || empty($data['name']) || !isset($data['price']) || ($data["price"] === '')) {
+            echo json_encode(['status' => 'error' , 'message' => 'Missing required fields: barcode, name, price, product_id']);
+            break;
+        }
+
+        $checkStml = $pdo->prepare("SELECT id FROM products WHERE id = :id");
+        $checkStml->execute([':id' => $data['product_id']]);
+        if (!$checkStml->fetch()) {
+            echo json_encode(['status' => 'error', 'message' => 'Product not found']);
+            break;
+        }
+
+        $stmt = $pdo->prepare("UPDATE products SET barcode = :barcode, name = :name, category = :category, price = :price, stock_qty = :stock_qty, reorder_level = :reorder_level, supplier_id = :supplier_id, expiration_date = :expiration_date WHERE id = :id");
+        $stmt->execute([
+            ':id' => $data['product_id'],
+            ':barcode' => $data['barcode'],
+            ':name' => $data['name'],
+            ':category' => (empty($data['category']) ? null : $data['category']),
+            ':price' => $data['price'],
+            ':stock_qty' => $data['stock_qty'],
+            ':reorder_level' => $data['reorder_level'] ?? 5,
+            ':supplier_id' => (empty($data['supplier_id']) ? null : $data['supplier_id']),
+            ':expiration_date' => (empty($data['expiration_date']) ? null : $data['expiration_date'])
+        ]);
+
+        echo json_encode(['status' => 'success', 'message' => 'Product updated successfully']);
         break;
 
     // ----------------------------------------------------

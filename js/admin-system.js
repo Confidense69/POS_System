@@ -91,6 +91,7 @@ async function loadInventory() {
                     </td>
                     <td>
                         <span class="badge ${p.is_active == 1 ? 'bg-success' : 'bg-danger'} me-1">${p.is_active == 1 ? 'Active' : 'Inactive'}</span>
+                        <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditModal(${p.id})">Edit</button>
                         <button class="btn btn-sm btn-outline-danger me-1" onclick="toggleProduct(${p.id})">
                             ${p.is_active == 1 ? 'Deactivate' : 'Activate'}
                         </button>
@@ -108,19 +109,45 @@ async function loadInventory() {
 
 async function handleAddProduct(e) {
     e.preventDefault();
-    const payload = {
-        barcode: document.getElementById("mSku").value,
-        name: document.getElementById("mName").value,
-        price: parseFloat(document.getElementById("mPrice").value),
-        stock_qty: parseInt(document.getElementById("mStock").value),
-        supplier_id: document.getElementById("mSupplier").value
-    };
+    const val = id => document.getElementById(id).value;
+    const num = v => (v === "" ? "" : Number(v));  // "" stays "" (contract: error), never Number("")=0
 
-    await fetch("../api/pos_system_api.php?action=add_product", {
+    const productId = val("mProductId");
+    const url = productId
+        ? "../api/pos_system_api.php?action=update_product"
+        : "../api/pos_system_api.php?action=add_product";
+
+    // update_product sends the full locked contract; add_product keeps its original keys
+    const payload = productId
+        ? {
+            product_id: Number(productId),
+            barcode: val("mSku"),
+            name: val("mName"),
+            category: val("mCategory"),
+            price: num(val("mPrice")),
+            stock_qty: num(val("mStock")),
+            reorder_level: num(val("mReorder")),
+            expiration_date: val("mExpiry"),
+            supplier_id: val("mSupplier")
+        }
+        : {
+            barcode: val("mSku"),
+            name: val("mName"),
+            category: val("mCategory"),
+            price: num(val("mPrice")),
+            stock_qty: num(val("mStock")),
+            reorder_level: num(val("mReorder")),
+            supplier_id: val("mSupplier")
+        };
+
+    await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     });
+
+    document.getElementById("mProductId").value = "";
+    document.getElementById("mTitle").innerText = "Add Product";
     loadInventory();
 }
 
@@ -140,6 +167,30 @@ async function toggleProduct(productId) {
         body: JSON.stringify({ product_id: productId })
     });
     loadInventory();
+}
+
+function openEditModal(productId) {
+    const p = inventoryCache.find(item => item.id === productId);
+    if (!p) return;
+
+    document.getElementById("mProductId").value = p.id;
+    document.getElementById("mTitle").innerText = "Edit Product";
+    document.getElementById("mSku").value = p.barcode ?? "";
+    document.getElementById("mName").value = p.name ?? "";
+    document.getElementById("mSupplier").value = p.supplier_id ?? "";
+    document.getElementById("mPrice").value = p.price ?? "";
+    document.getElementById("mStock").value = p.stock_qty ?? "";
+    document.getElementById("mCategory").value = p.category ?? "";
+    document.getElementById("mReorder").value = p.reorder_level ?? "";
+    document.getElementById("mExpiry").value = p.expiration_date ?? "";
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("addProductModal")).show();
+}
+
+function resetProductModal() {
+    document.getElementById("mProductId").value = "";
+    document.getElementById("mTitle").innerText = "Add Product";
+    document.getElementById("addProductForm").reset();
 }
 
 // 3. Supplier Management

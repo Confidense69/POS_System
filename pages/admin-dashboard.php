@@ -123,7 +123,7 @@ if (!in_array($role, $allowed_roles, true)){
           <div class="card shadow-sm">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
               <h5 class="mb-0 fw-bold"><i class="bi bi-box-seam text-primary me-2"></i>Inventory Management</h5>
-              <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">+ Add Product</button>
+              <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal" onclick="resetProductModal()">+ Add Product</button>
             </div>
             <div class="card-body p-0">
               <div class="table-responsive">
@@ -198,8 +198,9 @@ if (!in_array($role, $allowed_roles, true)){
     <div class="modal-dialog">
       <div class="modal-content">
         <form id="addProductForm">
-          <div class="modal-header"><h5 class="modal-title">Add Product</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-header"><h5 class="modal-title" id="mTitle">Add Product</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
           <div class="modal-body">
+            <input type="hidden" id="mProductId" value="">
             <div class="mb-2"><label class="form-label">SKU / Barcode</label><input type="text" id="mSku" class="form-control" required></div>
             <div class="mb-2"><label class="form-label">Name</label><input type="text" id="mName" class="form-control" required></div>
             <div class="mb-2"><label class="form-label">Supplier</label><select id="mSupplier" class="form-select"></select></div>
@@ -207,6 +208,11 @@ if (!in_array($role, $allowed_roles, true)){
               <div class="col-6"><label class="form-label">Price (&#8369;)</label><input type="number" step="0.01" id="mPrice" class="form-control" required></div>
               <div class="col-6"><label class="form-label">Stock Qty</label><input type="number" id="mStock" class="form-control" required></div>
             </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6"><label class="form-label">Category</label><input type="text" id="mCategory" class="form-control" placeholder="e.g. Grocery"></div>
+              <div class="col-6"><label class="form-label">Reorder Level</label><input type="number" id="mReorder" class="form-control" required></div>
+            </div>
+            <div class="mb-2"><label class="form-label">Expiration Date</label><input type="date" id="mExpiry" class="form-control"></div>
           </div>
           <div class="modal-footer"><button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Save Item</button></div>
         </form>
