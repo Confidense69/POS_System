@@ -25,7 +25,8 @@ if (!in_array($role, $allowed_roles, true)){
        - echo full_name -> navbar "Logged in as"
        - logout link    -> ../api/logout.php
        - extra sidebar links (Payroll / Reports / System Logs) kept as disabled TODOs
-     See groupmate/README.md for the full mapping of what was merged vs skipped.
+     The merge mapping lived in groupmate/README.md; that folder was removed in commit bab03f8
+     (recover it from git history if ever needed).
      ========================================================================== -->
 <!DOCTYPE html>
 <html lang="en">
