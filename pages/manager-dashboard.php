@@ -61,7 +61,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-success-subtle"><i class="bi bi-cash-coin"></i></div>
-                <div><div class="text-muted small">Today's Sales</div><div class="h5 mb-0">P0.00</div></div>
+                <div><div class="text-muted small">Today's Sales</div><div class="h5 mb-0" id="statSales">&#8369;0.00</div></div>
               </div>
             </div>
           </div>
@@ -69,7 +69,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-warning-subtle"><i class="bi bi-exclamation-triangle"></i></div>
-                <div><div class="text-muted small">Low Stock</div><div class="h5 mb-0">0</div></div>
+                <div><div class="text-muted small">Low Stock</div><div class="h5 mb-0" id="statLowStock">0</div></div>
               </div>
             </div>
           </div>
@@ -77,7 +77,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-info-subtle"><i class="bi bi-box-seam"></i></div>
-                <div><div class="text-muted small">Products</div><div class="h5 mb-0">0</div></div>
+                <div><div class="text-muted small">Products</div><div class="h5 mb-0" id="statProducts">0</div></div>
               </div>
             </div>
           </div>
@@ -85,7 +85,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-secondary-subtle"><i class="bi bi-person-badge"></i></div>
-                <div><div class="text-muted small">Employees</div><div class="h5 mb-0">0</div></div>
+                <div><div class="text-muted small">Employees</div><div class="h5 mb-0" id="statEmployees">0</div></div>
               </div>
             </div>
           </div>
@@ -107,7 +107,7 @@ if (!in_array($role, $allowed_roles, true)){
                       <th class="text-end">Total</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody id="recentTransactionsBody">
                     <tr><td colspan="5" class="text-center text-muted py-4">No transactions recorded yet.</td></tr>
                   </tbody>
                 </table>
@@ -130,5 +130,6 @@ if (!in_array($role, $allowed_roles, true)){
     </main>
   </div>
 
+  <script src="../js/manager-dashboard.js"></script>
 </body>
 </html>

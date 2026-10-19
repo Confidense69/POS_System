@@ -161,6 +161,26 @@ switch ($action) {
         }
         break;
 
+    case 'manager_stats':
+        $stats = $pdo->query("SELECT 
+        (SELECT COALESCE(SUM(total), 0) FROM transactions WHERE DATE(created_at) = CURDATE() AND is_voided = 0) AS todays_sales,
+        (SELECT COUNT(*) FROM products WHERE stock_qty <= reorder_level AND is_active = 1) AS low_stock,
+        (SELECT COUNT(*) FROM products) AS products,
+        (SELECT COUNT(*) FROM users) AS employees
+        ")->fetch();
+
+        $recent = $pdo->query("SELECT 
+        t.id, t.created_at, u.full_name AS cashier,
+        t.payment_method, t.total
+        FROM transactions t LEFT JOIN users u ON t.cashier_id = u.id 
+        ORDER BY t.created_at DESC LIMIT 10
+        ")->fetchAll();
+
+        $stats['recent_transactions'] = $recent;
+
+        echo json_encode(['status' => 'success', 'data' => $stats]);
+        
+        break;
     default:
         echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
         break;
