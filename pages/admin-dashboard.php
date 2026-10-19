@@ -4,6 +4,18 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: ../index.html");
     exit;
 }
+
+$allowed_roles = ['admin'];
+$role = $_SESSION['role'] ?? '';
+
+if (!in_array($role, $allowed_roles, true)){
+  if (in_array($role, ['admin', 'manager', 'cashier'], true)){
+    header('Location: ' . $role . '-dashboard.php');
+  }else{
+    header('Location: ../index.html');
+  }
+  exit;
+}
 ?>
 <!-- ==========================================================================
      NOTE: base markup is the groupmate's working admin dashboard.

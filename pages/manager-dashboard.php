@@ -5,6 +5,17 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: ../index.html');
     exit;
 }
+
+$allowed_roles = ['manager'];
+$role = $_SESSION['role'];
+if (!in_array($role, $allowed_roles, true)){
+  if (in_array($role, ['manager', 'cashier', 'admin'])){
+    header('Location: '. $role .'-dashboard.php');
+  }else{
+    header('Location: ../index.html');
+  }
+  exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
