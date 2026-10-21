@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $action = $_GET['action'] ?? '';
+$data = json_decode(file_get_contents('php://input'), true) ?? [];
 $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($action) {
@@ -23,7 +24,6 @@ switch ($action) {
         break;
 
     case 'add_user':
-        $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare("INSERT INTO users (username, password_hash, full_name, role, email) VALUES (:username, :hash, :full_name, :role, :email)");
         $stmt->execute([
             ':username'  => $data['username'],
@@ -36,7 +36,6 @@ switch ($action) {
         break;
 
     case 'toggle_user':
-        $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare("UPDATE users SET is_active = NOT is_active WHERE id = :id");
         $stmt->execute([':id' => $data['user_id']]);
         echo json_encode(['status' => 'success', 'message' => 'User Status toggled']);
@@ -56,7 +55,6 @@ switch ($action) {
         break;
 
     case 'add_product':
-        $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare("INSERT INTO products (barcode, name, category, price, stock_qty, reorder_level, supplier_id, expiration_date) VALUES (:barcode, :name, :category, :price, :stock, :reorder, :supplier, :expiration_date)");
         $stmt->execute([
             ':barcode'  => $data['barcode'],
@@ -72,10 +70,9 @@ switch ($action) {
         break;
 
     case 'restock_product':
-        $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare("UPDATE products SET stock_qty = stock_qty + :qty WHERE id = :id");
         $stmt->execute([':qty' => $data['quantity'], ':id' => $data['product_id']]);
-        
+
         $logStmt = $pdo->prepare("INSERT INTO restock_log (product_id, quantity, note) VALUES (:id, :qty, :note)");
         $logStmt->execute([':id' => $data['product_id'], ':qty' => $data['quantity'], ':note' => 'Restocked via admin UI']);
         
@@ -83,14 +80,12 @@ switch ($action) {
         break;
 
     case 'toggle_product':
-        $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare("UPDATE products SET is_active = NOT is_active WHERE id = :id");
         $stmt->execute([':id' => $data['product_id']]);
         echo json_encode(['status' => 'success', 'message' => 'Product Status toggled']);
         break;
 
     case 'update_product':
-        $data = json_decode(file_get_contents('php://input'), true);
         if(empty($data['product_id']) || empty($data['barcode']) || empty($data['name']) || !isset($data['price']) || ($data["price"] === '')) {
             echo json_encode(['status' => 'error' , 'message' => 'Missing required fields: barcode, name, price, product_id']);
             break;
@@ -128,7 +123,6 @@ switch ($action) {
         break;
 
     case 'add_supplier':
-        $data = json_decode(file_get_contents('php://input'), true);
         $stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address) VALUES (:name, :contact, :phone, :email, :address)");
         $stmt->execute([
             ':name'    => $data['name'],
@@ -144,7 +138,6 @@ switch ($action) {
     // 4. TRANSACTION / SALES / POS
     // ----------------------------------------------------
     case 'checkout':
-        $data = json_decode(file_get_contents('php://input'), true);
         $cart = $data['cart'] ?? [];
         $cashierId = $_SESSION['user_id'] ?? null;
 
