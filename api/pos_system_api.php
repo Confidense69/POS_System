@@ -55,14 +55,18 @@ switch ($action) {
         break;
 
     case 'add_product':
+        if (empty($data['barcode']) || empty($data['name']) || !isset($data['price']) || ($data["price"] === '')) {
+            echo json_encode(['status' => 'error', 'message' => 'Missing required fields: barcode, name, price']);
+            break;
+        }
         $stmt = $pdo->prepare("INSERT INTO products (barcode, name, category, price, stock_qty, reorder_level, supplier_id, expiration_date) VALUES (:barcode, :name, :category, :price, :stock, :reorder, :supplier, :expiration_date)");
         $stmt->execute([
             ':barcode'  => $data['barcode'],
             ':name'     => $data['name'],
             ':category' => (empty($data['category']) ? null : $data['category']),
             ':price'    => $data['price'],
-            ':stock'    => $data['stock_qty'],
-            ':reorder'  => $data['reorder_level'] ?? 5,
+            ':stock'    => (isset($data['stock_qty']) ? $data['stock_qty'] : 0),
+            ':reorder'  => (isset($data['reorder_level']) ? $data['reorder_level'] : 5),
             ':supplier' => (empty($data['supplier_id']) ? null : $data['supplier_id']),
             ':expiration_date' => (empty($data['expiration_date']) ? null : $data['expiration_date'])
         ]);
@@ -105,8 +109,8 @@ switch ($action) {
             ':name' => $data['name'],
             ':category' => (empty($data['category']) ? null : $data['category']),
             ':price' => $data['price'],
-            ':stock_qty' => $data['stock_qty'],
-            ':reorder_level' => $data['reorder_level'] ?? 5,
+            ':stock_qty' => (isset($data['stock_qty']) ? $data['stock_qty'] : 0),
+            ':reorder_level' => (isset($data['reorder_level']) ? $data['reorder_level'] : 5),
             ':supplier_id' => (empty($data['supplier_id']) ? null : $data['supplier_id']),
             ':expiration_date' => (empty($data['expiration_date']) ? null : $data['expiration_date'])
         ]);
