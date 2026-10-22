@@ -209,6 +209,14 @@ async function loadSuppliers() {
                 <td>${s.email || 'N/A'}</td>
                 <td>${s.phone || 'N/A'}</td>
                 <td>${s.address || 'N/A'}</td>
+                <td>
+                    <span class="badge ${s.is_active == 1 ? 'bg-success' : 'bg-danger'}">${s.is_active == 1 ? 'Active' : 'Inactive'}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-danger me-1" onclick="toggleSupplier(${s.id})">
+                        ${s.is_active == 1 ? 'Deactivate' : 'Activate'}
+                    </button>
+                </td>
             </tr>
         `).join("");
 
@@ -217,6 +225,15 @@ async function loadSuppliers() {
                 result.data.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
         }
     }
+}
+
+async function toggleSupplier(supplierId) {
+    await fetch("../api/pos_system_api.php?action=toggle_supplier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplier_id: supplierId })
+    });
+    loadSuppliers();
 }
 
 async function handleAddSupplier(e) {

@@ -84,8 +84,16 @@ switch ($action) {
         break;
 
     case 'toggle_product':
+        if (empty($data['product_id'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Missing product_id']);
+            break;
+        }
         $stmt = $pdo->prepare("UPDATE products SET is_active = NOT is_active WHERE id = :id");
         $stmt->execute([':id' => $data['product_id']]);
+        if ($stmt->rowCount() === 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Product not found']);
+            break;
+        }
         echo json_encode(['status' => 'success', 'message' => 'Product Status toggled']);
         break;
 
@@ -136,6 +144,20 @@ switch ($action) {
             ':address' => $data['address'] ?? null
         ]);
         echo json_encode(['status' => 'success', 'message' => 'Supplier added']);
+        break;
+
+    case 'toggle_supplier':
+        if (empty($data['supplier_id'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Missing supplier_id']);
+            break;
+        }
+        $stmt = $pdo->prepare("UPDATE suppliers SET is_active = NOT is_active WHERE id = :id");
+        $stmt->execute([':id' => $data['supplier_id']]);
+        if ($stmt->rowCount() === 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Supplier not found']);
+            break;
+        }
+        echo json_encode(['status' => 'success', 'message' => 'Supplier Status toggled']);
         break;
 
     // ----------------------------------------------------
