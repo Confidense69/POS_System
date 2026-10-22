@@ -264,6 +264,32 @@ if (!in_array($role, $allowed_roles, true)){
     </div>
   </div>
 
+  <!-- Modal: Edit Supplier (M4 #2 step 4) -->
+  <!-- maxlength mirrors the REAL column widths (SHOW COLUMNS suppliers):
+       name 100, contact_person 100, email 100, phone 30, address 255.
+       This stops the silent truncation before it reaches the API. -->
+  <div class="modal fade" id="editSupplierModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="editSupplierForm">
+          <div class="modal-header"><h5 class="modal-title" id="mSupplierTitle">Edit Supplier</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <input type="hidden" id="mSupplierId" value="">
+            <div class="mb-2"><label class="form-label">Company Name</label><input type="text" id="mSupName" class="form-control" required maxlength="100"></div>
+            <div class="mb-2"><label class="form-label">Contact Person</label><input type="text" id="mSupContact" class="form-control" maxlength="100"></div>
+            <div class="mb-2"><label class="form-label">Email</label><input type="email" id="mSupEmail" class="form-control" maxlength="100"></div>
+            <div class="mb-2"><label class="form-label">Phone</label><input type="text" id="mSupPhone" class="form-control" maxlength="30"></div>
+            <div class="mb-2"><label class="form-label">Address</label><input type="text" id="mSupAddress" class="form-control" maxlength="255"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveSupplierBtn">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
 
 
 

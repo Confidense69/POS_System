@@ -6,12 +6,43 @@ document.addEventListener("DOMContentLoaded", () => {
     // Form Submissions
     document.getElementById("addProductForm")?.addEventListener("submit", handleAddProduct);
     document.getElementById("addSupplierForm")?.addEventListener("submit", handleAddSupplier);
+    document.getElementById("editSupplierForm")?.addEventListener("submit", handleEditSupplier);
     document.getElementById("addAccountForm")?.addEventListener("submit", handleAddAccount);
     document.getElementById("posCheckoutBtn")?.addEventListener("click", handlePOSCheckout);
 });
 
 let posCart = [];
 let inventoryCache = [];
+let suppliersCache = [];
+
+// Escape a value that came FROM THE DATABASE before it goes into innerHTML.
+// Without this, a supplier named  <img src=x onerror=alert(1)>  is parsed as HTML, not text.
+function esc(value) {
+    if (value === null || value === undefined) return "";
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+// POST JSON and parse the reply SAFELY.
+// php.ini has display_errors=On, so a single PHP warning can glue itself onto the front of
+// the JSON body and make res.json() throw. Reading the raw text shows us what really came back.
+async function postJSON(url, payload) {
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    try {
+        return JSON.parse(text);
+    } catch (err) {
+        throw new Error("Server sent a non-JSON reply: " + text.slice(0, 200));
+    }
+}
 
 // 1. Account Management
 async function loadAccounts() {
@@ -24,9 +55,9 @@ async function loadAccounts() {
         tbody.innerHTML = result.data.map(u => `
             <tr>
                 <td><code>USR-${u.id}</code></td>
-                <td class="fw-bold">${u.username}</td>
-                <td>${u.email || 'N/A'}</td>
-                <td><span class="badge bg-secondary">${u.role}</span></td>
+                <td class="fw-bold">${esc(u.username)}</td>
+                <td>${esc(u.email) || 'N/A'}</td>
+                <td><span class="badge bg-secondary">${esc(u.role)}</span></td>
                 <td><span class="badge ${u.is_active == 1 ? 'bg-success' : 'bg-danger'}">${u.is_active == 1 ? 'Active' : 'Inactive'}</span></td>
                 <td>
                     <button class="btn btn-sm btn-outline-danger" onclick="toggleUser(${u.id})">
@@ -80,9 +111,9 @@ async function loadInventory() {
 
             return `
                 <tr>
-                    <td><code>${p.barcode}</code></td>
-                    <td class="fw-bold">${p.name}</td>
-                    <td>${p.supplier_name || 'N/A'}</td>
+                    <td><code>${esc(p.barcode)}</code></td>
+                    <td class="fw-bold">${esc(p.name)}</td>
+                    <td>${esc(p.supplier_name) || 'N/A'}</td>
                     <td>₱${parseFloat(p.price).toFixed(2)}</td>
                     <td>
                         <span class="badge ${isLow ? 'bg-warning text-dark' : 'bg-success'}">
@@ -202,17 +233,19 @@ async function loadSuppliers() {
     if (!tbody) return;
 
     if (result.status === "success") {
+        suppliersCache = result.data;
         tbody.innerHTML = result.data.map(s => `
             <tr>
                 <td><code>SUP-${s.id}</code></td>
-                <td class="fw-bold">${s.name}</td>
-                <td>${s.email || 'N/A'}</td>
-                <td>${s.phone || 'N/A'}</td>
-                <td>${s.address || 'N/A'}</td>
+                <td class="fw-bold">${esc(s.name)}</td>
+                <td>${esc(s.email) || 'N/A'}</td>
+                <td>${esc(s.phone) || 'N/A'}</td>
+                <td>${esc(s.address) || 'N/A'}</td>
                 <td>
                     <span class="badge ${s.is_active == 1 ? 'bg-success' : 'bg-danger'}">${s.is_active == 1 ? 'Active' : 'Inactive'}</span>
                 </td>
                 <td>
+                    <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditSupplierModal(${s.id})">Edit</button>
                     <button class="btn btn-sm btn-outline-danger me-1" onclick="toggleSupplier(${s.id})">
                         ${s.is_active == 1 ? 'Deactivate' : 'Activate'}
                     </button>
@@ -221,8 +254,10 @@ async function loadSuppliers() {
         `).join("");
 
         if (select) {
-            select.innerHTML = `<option value="">Select Supplier</option>` + 
-                result.data.map(s => `<option value="${s.id}">${s.name}</option>`).join("");
+            // Keep DEACTIVATED suppliers in the list (marked) on purpose: if they were filtered
+            // out, editing a product that points at one would silently blank its supplier_id.
+            select.innerHTML = `<option value="">Select Supplier</option>` +
+                result.data.map(s => `<option value="${s.id}">${esc(s.name)}${s.is_active == 1 ? '' : ' (Inactive)'}</option>`).join("");
         }
     }
 }
@@ -238,12 +273,14 @@ async function toggleSupplier(supplierId) {
 
 async function handleAddSupplier(e) {
     e.preventDefault();
+    const val = id => document.getElementById(id).value.trim();
+
     const payload = {
-        name: document.getElementById("supName").value,
-        contact_person: document.getElementById("supContact").value,
-        email: document.getElementById("supEmail").value,
-        phone: document.getElementById("supPhone").value,
-        address: document.getElementById("supAddress").value
+        name: val("supName"),
+        contact_person: val("supContact"),
+        email: val("supEmail"),
+        phone: val("supPhone"),
+        address: val("supAddress")
     };
 
     await fetch("../api/pos_system_api.php?action=add_supplier", {
@@ -252,6 +289,53 @@ async function handleAddSupplier(e) {
         body: JSON.stringify(payload)
     });
     loadSuppliers();
+}
+
+// --- Edit Supplier (M4 #2 step 4) ---
+// CONTRACT (locked with the backend): POST update_supplier with
+// {supplier_id, name, contact_person, phone, email, address} -> {status:'success'|'error', message}
+function openEditSupplierModal(supplierId) {
+    const s = suppliersCache.find(item => item.id === supplierId);
+    if (!s) return;
+
+    document.getElementById("mSupplierId").value = s.id;
+    document.getElementById("mSupplierTitle").innerText = "Edit Supplier";
+    document.getElementById("mSupName").value = s.name ?? "";
+    document.getElementById("mSupContact").value = s.contact_person ?? "";
+    document.getElementById("mSupEmail").value = s.email ?? "";
+    document.getElementById("mSupPhone").value = s.phone ?? "";
+    document.getElementById("mSupAddress").value = s.address ?? "";
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("editSupplierModal")).show();
+}
+
+async function handleEditSupplier(e) {
+    e.preventDefault();
+    const val = id => document.getElementById(id).value.trim();
+
+    const payload = {
+        supplier_id: Number(val("mSupplierId")),
+        name: val("mSupName"),
+        contact_person: val("mSupContact"),
+        phone: val("mSupPhone"),
+        email: val("mSupEmail"),
+        address: val("mSupAddress")
+    };
+
+    try {
+        const result = await postJSON("../api/pos_system_api.php?action=update_supplier", payload);
+
+        if (result.status === "success") {
+            document.getElementById("mSupplierId").value = "";
+            document.getElementById("mSupplierTitle").innerText = "Edit Supplier";
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("editSupplierModal")).hide();
+            loadSuppliers();
+        } else {
+            alert("Error: " + result.message);
+        }
+    } catch (err) {
+        alert(err.message);
+    }
 }
 
 // 4. POS / Sales Management
@@ -286,7 +370,7 @@ function renderPOSCart() {
         subtotal += lineTotal;
         return `
             <tr>
-                <td>${item.name}</td>
+                <td>${esc(item.name)}</td>
                 <td class="text-center">${item.quantity}</td>
                 <td class="text-end">₱${item.price.toFixed(2)}</td>
                 <td class="text-end fw-bold">₱${lineTotal.toFixed(2)}</td>
