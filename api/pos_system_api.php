@@ -30,7 +30,7 @@ switch ($action) {
             ':hash'      => password_hash($data['password'] ?? 'password123', PASSWORD_DEFAULT),
             ':full_name' => $data['full_name'],
             ':role'      => $data['role'],
-            ':email'     => $data['email'] ?? null
+            ':email'     => $data['email'] ? $data['email'] : null
         ]);
         echo json_encode(['status' => 'success', 'message' => 'User created successfully']);
         break;
@@ -135,13 +135,17 @@ switch ($action) {
         break;
 
     case 'add_supplier':
+        if (empty($data['name'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Missing required field: name']);
+            break;
+        }
         $stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, email, address) VALUES (:name, :contact, :phone, :email, :address)");
         $stmt->execute([
             ':name'    => $data['name'],
-            ':contact' => $data['contact_person'] ?? null,
-            ':phone'   => $data['phone'] ?? null,
-            ':email'   => $data['email'] ?? null,
-            ':address' => $data['address'] ?? null
+            ':contact' => !empty($data['contact_person']) ? $data['contact_person'] : null,
+            ':phone'   => !empty($data['phone']) ? $data['phone'] : null,
+            ':email'   => !empty($data['email']) ? $data['email'] : null,
+            ':address' => !empty($data['address']) ? $data['address'] : null
         ]);
         echo json_encode(['status' => 'success', 'message' => 'Supplier added']);
         break;
@@ -160,6 +164,28 @@ switch ($action) {
         echo json_encode(['status' => 'success', 'message' => 'Supplier Status toggled']);
         break;
 
+    case 'update_supplier':
+        if (empty($data['supplier_id']) || empty($data['name'])) {
+            echo json_encode(['status' => 'error', 'message' => 'Missing required fields: supplier_id, name']);
+            break;
+        }
+        $checkStml = $pdo->prepare("SELECT id FROM suppliers WHERE id = :id");
+        $checkStml->execute([':id' => $data['supplier_id']]);
+        if (!$checkStml->fetch()) {
+            echo json_encode(['status' => 'error', 'message' => 'Supplier not found']);
+            break;
+        }
+        $stmt = $pdo->prepare("UPDATE suppliers SET name = :name, contact_person = :contact, phone = :phone, email = :email, address = :address WHERE id = :id");
+        $stmt->execute([
+            ':id'      => $data['supplier_id'],
+            ':name'    => $data['name'],
+            ':contact' => !empty($data['contact_person']) ? $data['contact_person'] : null,
+            ':phone'   => !empty($data['phone']) ? $data['phone'] : null,
+            ':email'   => !empty($data['email']) ? $data['email'] : null,
+            ':address' => !empty($data['address']) ? $data['address'] : null
+        ]);
+        echo json_encode(['status' => 'success', 'message' => 'Supplier updated']);
+        break;
     // ----------------------------------------------------
     // 4. TRANSACTION / SALES / POS
     // ----------------------------------------------------
