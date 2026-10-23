@@ -13,7 +13,8 @@ $action = $_GET['action'] ?? '';
 $data = json_decode(file_get_contents('php://input'), true) ?? [];
 $method = $_SERVER['REQUEST_METHOD'];
 
-switch ($action) {
+try{
+    switch ($action) {
 
     // ----------------------------------------------------
     // 1. ACCOUNT MANAGEMENT
@@ -30,7 +31,7 @@ switch ($action) {
             ':hash'      => password_hash($data['password'] ?? 'password123', PASSWORD_DEFAULT),
             ':full_name' => $data['full_name'],
             ':role'      => $data['role'],
-            ':email'     => $data['email'] ? $data['email'] : null
+            ':email'     => !empty($data['email']) ? $data['email'] : null
         ]);
         echo json_encode(['status' => 'success', 'message' => 'User created successfully']);
         break;
@@ -267,5 +268,12 @@ switch ($action) {
     default:
         echo json_encode(['status' => 'error', 'message' => 'Invalid action']);
         break;
+    }
 }
+
+catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode(['status' => 'error', 'message' => 'Server error: ' . $e->getMessage()]);
+}
+
 ?>
