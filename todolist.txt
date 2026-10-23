@@ -1,0 +1,129 @@
+POS System TODO
+===============
+
+DONE
+- M1  DB connected; api/products.php returns 4 seeded products as JSON
+- M2  fetch loop renders products (async/await, DOM build)
+- M2.5 barcode flow in cashier-pos.js (addByBarcode + renderProduct + alert)
+- M2.5B recall session: rebuilt script from memory, fixed deltas, scratch deleted
+- ENV Apache alias /pos -> repo folder; dashboards converted to pages/*.php shells
+- M3.5 API moved INTO repo (api/) served at /pos/api/; .gitignore added; pushed to GitHub
+- M3 task 1: passwords hashed — now via `php console.php db:seed` (keeps DB hashes valid on every machine)
+- CONSOLE (10/16): added console.php, this project's "artisan":
+    php console.php db:seed | users:list | list
+  Replaced api/hash_user.php (DELETED): the old file was web-reachable and would reset ALL passwords
+  to password123 for anyone who opened its URL. console.php refuses to run over the web (403).
+- M3 task 2: api/login.php WRITTEN + VALIDATED (admin/password123 -> {"success":true,...})
+- M3 task 3: api/logout.php written + verified (HTTP 302 -> /pos/index.html)
+- M3 task 4: role dropdown REMOVED from index.html (10/16)
+- M3 task 5: js/login.js REWRITTEN: POST JSON -> api/login.php, reads `success`, routes via data.role (10/16)
+- GROUP (10/16): split groupmate's "4 modules" paste -> api/pos_system_api.php + js/admin-system.js;
+  merged on branch groupmate-additions, fast-forwarded into main, pushed. His rewrites of
+  config.php / login.php / js/login.js were NOT dropped in; copies kept in groupmate/ for reference.
+- GROUP (10/16): api/config.php now sets PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+  (fixes duplicate numeric keys like {"id":4,"0":4}).
+
+M3 — REAL LOGIN (tasks 4-9)
+- [x] 4. role dropdown removed from index.html
+- [x] 5. js/login.js posts to api/login.php, routes by data.role
+- [x] 6. session guard + $_SESSION echoes at the @M3 markers — DONE for all three pages (10/16)
+         admin/manager/cashier-dashboard.php each start with the php guard -> header('Location: ../index.html') + exit
+         when not logged in; role/full_name echoed from $_SESSION; Logout -> ../api/logout.php
+         verified: all three return HTTP 302 with no session; manager login renders role "manager" + "Liam"
+- [x] 7. Deleted stale pages/*.html shells (admin/manager/cashier-dashboard.html) (10/16, commit 59ca10c)
+         They were the ORIGINAL First-Commit dashboards; login.js still pointed at them until 872a9de.
+- [x] 8. Full loop test — DONE 10/19 (browser, private window, all three roles):
+         admin -> pages/admin-dashboard.php (role "admin", name "hecker"); manager ->
+         pages/manager-dashboard.php (role "manager", name "Liam"); cashier -> confirmed 10/16.
+         Logout -> index.html. Negative test CONFIRMED for all three: retyping a dashboard URL while
+         logged-out bounces to index.html (Back button shows no cached copy either).
+- [x] 9. Teach-back DONE 10/19: Kyle explained api/login.php + the manager guard line-by-line.
+         Needed help on 2 mechanisms: prepared statements (why :username kills SQL injection) and
+         what password_verify really does (reuses the stored salt, doesn't compare salts).
+         Nailed independently: guard-before-output rule, why exit matters, enumeration message,
+         trim-username-not-password, session = the real login, guard checks user_id.
+- [x] 10. AUTHORIZATION GAP — FIXED 10/19 (Kyle). Each dashboard now checks the ROLE, not just
+         "logged in": $allowed_roles = ['<role>'] then in_array($role, $allowed_roles, true).
+         On mismatch it redirects to the user's OWN page ($role . '-dashboard.php', a SIBLING in
+         pages/ — no ../) and falls back to ../index.html when the role is unknown (fail closed).
+         Both checks run BEFORE any output, with exit (same rule as the login guard).
+         Verified end-to-end 10/19 (curl + saved cookies):
+           manager -> admin page   = 302 -> manager-dashboard.php  (follow = 200, no redirect loop)
+           cashier -> manager page = 302 -> cashier-dashboard.php
+           no session -> any page  = 302 -> ../index.html
+         LEFTOVER: the guard is now copy-pasted in all 3 dashboards -> candidate for a shared
+         guard.php helper (option B) later. Also: login.js had a leftover roleInput reference
+         (ReferenceError on submit) — Kyle removed the stray line; fixed 10/19.
+
+NEXT SESSION FLOW (contract): micro-drills if needed -> teach-back login.php + a guard ->
+browser click-through (admin + manager) -> then start M4+.
+
+REMINDERS
+- WORKING AGREEMENT (10/22, "Rule A"): USER = ALL backend (PHP + SQL) AND all debugging
+  (Xdebug + DB verification). AI = ALL frontend (HTML/CSS/JS) + teaching/explanations + the GIT
+  mechanics (stage exact paths, commit message, commit, push to origin/main). Kyle keeps the checks.
+- Groupmate can't pull/push (re-downloads + pastes whole files). FIX: he DELETES his local copy and
+  re-CLONES the repo, then uses git pull/commit/push normally. Kyle owns main; no pasted full-tree drops.
+- PowerShell API test: JSON must be in a FILE, not inline (quotes get stripped).
+  curl.exe -s -X POST -H "Content-Type: application/json" -d @body.json http://localhost/pos/api/login.php
+- api files live in repo -> http://localhost/pos/api/...
+- login.php reply key is `success`; $_SESSION keys: user_id, username, full_name, role
+- pos_system_api.php reply key is `status`; it REQUIRES a session (401 without one)
+- GREP LIES: `session_start()` inside an @M3 COMMENT matched a "guard exists" check.
+  A guard = an actual `<?php session_start(); if(!isset($_SESSION['user_id']))...` block. READ the file.
+- Never write .php via PowerShell `Out-File -Encoding utf8` (adds a BOM -> "headers already sent").
+- Only 3 roles exist: admin, manager, cashier (DB ENUM + pos.png checklist agree).
+- BROWSER CACHE HIDES EDITS (10/16): Firefox/Chrome had cached the month-old js/login.js (which
+  routed to pages\*-dashboard.html) AND the .html pages themselves. So login kept landing on .html
+  and the DELETED .html files still "worked" with NO 404 — the browser never asked Apache.
+  Always test in a PRIVATE/incognito window; hard-reload (Ctrl+Shift+R) after frontend edits.
+  When files seem to exist after deletion: curl the URL + check access.log BEFORE theorising.
+
+M4+ — FEATURE WORK
+- [x] #1 Manager dashboard REAL data (10/19): api/pos_system_api.php case 'manager_stats'
+         = 4 scalar subqueries (todays_sales/low_stock/products/employees) + a SECOND query
+         LEFT JOIN users for the last 5 transactions. New js/manager-dashboard.js renderer;
+         ids + script added to pages/manager-dashboard.php.
+         Contract keys locked: todays_sales, low_stock, products, employees, recent_transactions.
+         Verified live with curl+cookies; test data reverted; committed.
+- [ ] #2 M4 #2 — Inventory + Supplier CRUD (admin dashboard). PLAN 10/19, order 1->2->3->4:
+         [x] 1. product deactivate/activate DONE 10/19. Kyle: case 'toggle_product' {product_id}
+                + break; (first draft fell through into get_suppliers). AI: Status badge +
+                Deactivate/Activate button; + POS button hidden when is_active = 0.
+                Verified: live curl 2-way toggle (1->0->1), 401 no session, 15/15 node UI checks.
+         [x] 2. product edit DONE 10/19. Kyle: case 'update_product' (validation gate -> pre-check
+                SELECT -> UPDATE, 9 binds/9 placeholders incl. expiration_date; trio guarded by
+                empty->null on BOTH endpoints; errors in envelope + break). AI: Edit button +
+                pre-filled modal (hidden mProductId, dynamic title, 3 new fields, required marks
+                match NOT NULL/400 contract). Verified: full live matrix (blank price 400-envelope,
+                bogus id not-found, 0s survive, expiry round-trip, trio NULL both endpoints,
+                no-change save OK, revert); 25/25 node modal tests.
+         [ ] 3. supplier deactivate/activate -> case 'toggle_supplier'.  AI: Status + Action columns.
+         [ ] 4. supplier edit -> case 'update_supplier'.  AI: Edit modal.
+         DECISION: "delete" = SOFT delete (is_active = 0). A hard DELETE cascades restock_log away
+         and NULLs transaction_items.product_id + products.supplier_id. Reversible > destructive.
+
+M4+ (scope from pos.png checklist — the sheet itself still says "Not Started" on all rows)
+- POS: keyboard-only cashiering; configurable tax (12/16/20%); PWD/Senior discounts w/ ID field;
+  QR display-only for GCash/Maya/MayaBank; soft-copy receipt UI
+- Inventory: restock logging (DONE via pos_system_api.php?action=restock_product);
+  low-stock + expiration alerts; supplier add/edit/deactivate (add/view done)
+- HR/Payroll: gross -> deductions -> net pay per employee per period
+- Reports/Dashboard: per-role dashboard summary; system logs (admin-only viewer);
+  sales/salary/losses reports + simple income statement (Revenue - Expenses)
+- UI/UX: responsive manager view
+
+LEGACY TODOS (recovered 10/19 from groupmate/README.md before deleting that folder)
+- api/pos_system_api.php add_user: a BLANK password silently becomes 'password123' (line ~30). Fine for
+  dev; decide whether to require a real password.
+- api/pos_system_api.php checkout: hardcodes payment_method = 'cash' (line ~128) and computes 8% tax
+  but never records a tax_rate. Wire up tax_rate + let the cashier choose the payment method.
+- Reply-key mismatch: login.php replies {success:...}; pos_system_api.php replies {status:...}. Unify later.
+- STALE NOTE (ignore): groupmate/README.md says pos_system_api.php has "no auth guard" — it DOES:
+  returns 401 'Not authenticated' without a session (verified live 10/19).
+- admin-system.js prints `$` (not &#8369;) on the POS tab + price cell; and the inventory onclick
+  addCartItem(..., '${p.name}', ...) breaks on a product name containing an apostrophe. (AI lane.)
+- Manager recent transactions LIMIT: Kyle bumped 5 -> 10 himself; already committed in 7edac42.
+- FALSE ALARM 10/19: two garbled file reads implied schema drift + a broken update_user_status
+  action. grep + live SHOW COLUMNS proved database.sql and admin-system.js are IN SYNC.
+  Verify with grep/shell before reporting a bug.
