@@ -145,12 +145,34 @@ if (!in_array($role, $allowed_roles, true)){
                 <div class="d-flex justify-content-between mb-3">
                   <span class="fw-bold">TOTAL</span><span id="totalValue" class="fw-bold">&#8369;0.00</span>
                 </div>
-                <button id="checkoutBtn" class="btn btn-success w-100">Charge / Checkout</button>
+                <div class="d-flex gap-2">
+                  <button id="checkoutBtn" class="btn btn-success flex-grow-1">Charge / Checkout</button>
+                  <button id="clearCartBtn" class="btn btn-outline-danger" type="button">Clear Cart</button>
+                </div>
+
+                <div class="card border-0 bg-light mt-3">
+                  <div class="card-body p-3">
+                    <div class="small text-muted fw-semibold mb-2">Soft Copy Receipt</div>
+                    <div id="receiptItems" class="small text-muted"></div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between small"><span>Subtotal</span><span id="receiptSubtotal">₱0.00</span></div>
+                    <div class="d-flex justify-content-between small"><span>Tax</span><span id="receiptTax">₱0.00</span></div>
+                    <div class="d-flex justify-content-between small"><span>Total</span><span id="receiptTotal" class="fw-semibold">₱0.00</span></div>
+                  </div>
+                </div>
+
+                <div id="qrDisplayWrap" class="mt-3" style="display:none;">
+                  <div class="small text-muted fw-semibold mb-2">QR Payment Display</div>
+                  <img id="qrImage" class="img-fluid mx-auto d-block border rounded" src="" alt="Selected payment QR code" style="max-width: 220px;">
+                </div>
+
                 <div class="d-flex gap-2 justify-content-center mt-3">
                   <span class="badge text-bg-light border">F2 Search</span>
                   <span class="badge text-bg-light border">F3 Void</span>
                   <span class="badge text-bg-light border">F4 Pay</span>
+                  <span class="badge text-bg-light border">F5 Clear</span>
                 </div>
+                <div class="small text-muted text-center mt-2">Payment: 1 Cash · 2 GCash · 3 Maya · 4 MariBank</div>
               </div>
             </div>
           </div>
