@@ -111,20 +111,41 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card">
               <div class="card-header bg-white fw-semibold">Payment Summary</div>
               <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Subtotal</span><span>&#8369;0.00</span>
+                <div class="mb-3">
+                  <label class="form-label small text-muted">Customer Type</label>
+                  <select id="customerType" class="form-select form-select-sm">
+                    <option value="regular">Regular</option>
+                    <option value="senior">Senior Citizen</option>
+                    <option value="pwd">PWD</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small text-muted">ID Number (for Senior/PWD)</label>
+                  <input id="idNumber" type="text" class="form-control form-control-sm" placeholder="Optional">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small text-muted">Payment Method</label>
+                  <select id="paymentMethod" class="form-select form-select-sm">
+                    <option value="cash">Cash</option>
+                    <option value="gcash">GCash</option>
+                    <option value="maya">Maya</option>
+                    <option value="maribank">MariBank</option>
+                  </select>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                  <span class="text-muted">Discount</span><span>&#8369;0.00</span>
+                  <span class="text-muted">Subtotal</span><span id="subtotalValue">&#8369;0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="text-muted">Discount</span><span id="discountValue">&#8369;0.00</span>
                 </div>
                 <div class="d-flex justify-content-between mb-3">
-                  <span class="text-muted">Tax</span><span>&#8369;0.00</span>
+                  <span class="text-muted">Tax</span><span id="taxValue">&#8369;0.00</span>
                 </div>
                 <hr>
                 <div class="d-flex justify-content-between mb-3">
-                  <span class="fw-bold">TOTAL</span><span class="fw-bold">&#8369;0.00</span>
+                  <span class="fw-bold">TOTAL</span><span id="totalValue" class="fw-bold">&#8369;0.00</span>
                 </div>
-                <button class="btn btn-success w-100" disabled>Charge / Checkout</button>
+                <button id="checkoutBtn" class="btn btn-success w-100">Charge / Checkout</button>
                 <div class="d-flex gap-2 justify-content-center mt-3">
                   <span class="badge text-bg-light border">F2 Search</span>
                   <span class="badge text-bg-light border">F3 Void</span>

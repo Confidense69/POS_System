@@ -1,5 +1,6 @@
 <?php
-require_once 'config.php';
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/tax_engine.php';
 session_start();
 
 // @M3-style guard: reject unauthenticated API calls (login.php must set $_SESSION['user_id'])
@@ -199,22 +200,42 @@ try{
             exit;
         }
 
+        $taxRate      = isset($data['tax_rate']) ? (float)$data['tax_rate'] : 0.12;
+        $customerType = empty($data['customer_type']) ? 'regular' : strtolower(trim((string)$data['customer_type']));
+        $idNumber     = empty($data['id_number']) ? null : trim((string)$data['id_number']);
+        $paymentMethod = empty($data['payment_method']) ? 'cash' : strtolower(trim((string)$data['payment_method']));
+
+        if (!in_array($customerType, ['regular', 'pwd', 'senior'], true)) {
+            $customerType = 'regular';
+        }
+
+        if (!in_array($paymentMethod, ['cash', 'gcash', 'maya', 'maribank'], true)) {
+            $paymentMethod = 'cash';
+        }
+
         $pdo->beginTransaction();
         try {
-            $subtotal = 0;
-            foreach ($cart as $item) {
-                $subtotal += $item['price'] * $item['quantity'];
-            }
-            $taxAmt = $subtotal * 0.08;
-            $total  = $subtotal + $taxAmt;
+            $totals = calculate_tax_and_totals($cart, $taxRate, $customerType, $idNumber);
+
+            //$subtotal = 0;
+            //foreach ($cart as $item) {
+            //    $subtotal += $item['price'] * $item['quantity'];
+            //}
+            //$taxAmt = $subtotal * 0.08;
+            //$total  = $subtotal + $taxAmt;
 
             // 1. Save Transaction
-            $txnStmt = $pdo->prepare("INSERT INTO transactions (cashier_id, subtotal, tax_amt, total, payment_method) VALUES (:cashier, :subtotal, :tax, :total, 'cash')");
+            $txnStmt = $pdo->prepare("INSERT INTO transactions (cashier_id, customer_type, discount_id, tax_rate, subtotal, discount_amt, tax_amt, total, payment_method) VALUES (:cashier, :customer_type, :discount_id, :tax_rate, :subtotal, :discount, :tax, :total, :payment_method)");
             $txnStmt->execute([
-                ':cashier'  => $cashierId,
-                ':subtotal' => $subtotal,
-                ':tax'      => $taxAmt,
-                ':total'    => $total
+                ':cashier'        => $cashierId,
+                ':customer_type'  => $totals['customer_type'],
+                ':discount_id'    => $totals['discount_id'],
+                ':tax_rate'       => $totals['tax_rate_applied'],
+                ':subtotal'       => $totals['gross_subtotal'],
+                ':discount'       => $totals['discount_amount'],
+                ':tax'            => $totals['vat_amount'],
+                ':total'          => $totals['net_total'],
+                ':payment_method' => $paymentMethod
             ]);
             $txnId = $pdo->lastInsertId();
 
@@ -238,7 +259,7 @@ try{
             }
 
             $pdo->commit();
-            echo json_encode(['status' => 'success', 'message' => 'Checkout complete!', 'transaction_id' => $txnId]);
+            echo json_encode(['status' => 'success', 'message' => 'Checkout complete!', 'transaction_id' => $txnId, 'summary' => $totals]);
         } catch (Exception $e) {
             $pdo->rollBack();
             echo json_encode(['status' => 'error', 'message' => 'Transaction failed: ' . $e->getMessage()]);
