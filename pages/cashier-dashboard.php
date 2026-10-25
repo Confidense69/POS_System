@@ -120,8 +120,8 @@ if (!in_array($role, $allowed_roles, true)){
                   </select>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label small text-muted">ID Number (for Senior/PWD)</label>
-                  <input id="idNumber" type="text" class="form-control form-control-sm" placeholder="Optional">
+                  <label class="form-label small text-muted">ID Number (required for Senior/PWD)</label>
+                  <input id="idNumber" type="text" class="form-control form-control-sm" placeholder="Only needed for Senior / PWD">
                 </div>
                 <div class="mb-3">
                   <label class="form-label small text-muted">Payment Method</label>
@@ -139,14 +139,14 @@ if (!in_array($role, $allowed_roles, true)){
                   <span class="text-muted">Discount</span><span id="discountValue">&#8369;0.00</span>
                 </div>
                 <div class="d-flex justify-content-between mb-3">
-                  <span class="text-muted">Tax</span><span id="taxValue">&#8369;0.00</span>
+                  <span class="text-muted" id="taxLabel">VAT (12%)</span><span id="taxValue">&#8369;0.00</span>
                 </div>
                 <hr>
                 <div class="d-flex justify-content-between mb-3">
                   <span class="fw-bold">TOTAL</span><span id="totalValue" class="fw-bold">&#8369;0.00</span>
                 </div>
                 <div class="d-flex gap-2">
-                  <button id="checkoutBtn" class="btn btn-success flex-grow-1">Charge / Checkout</button>
+                  <button id="checkoutBtn" class="btn btn-success flex-grow-1" type="button">Charge / Checkout</button>
                   <button id="clearCartBtn" class="btn btn-outline-danger" type="button">Clear Cart</button>
                 </div>
 
@@ -156,7 +156,8 @@ if (!in_array($role, $allowed_roles, true)){
                     <div id="receiptItems" class="small text-muted"></div>
                     <hr class="my-2">
                     <div class="d-flex justify-content-between small"><span>Subtotal</span><span id="receiptSubtotal">₱0.00</span></div>
-                    <div class="d-flex justify-content-between small"><span>Tax</span><span id="receiptTax">₱0.00</span></div>
+                    <div class="d-flex justify-content-between small"><span>Discount</span><span id="receiptDiscount">₱0.00</span></div>
+                    <div class="d-flex justify-content-between small"><span id="receiptTaxLabel">VAT (12%)</span><span id="receiptTax">₱0.00</span></div>
                     <div class="d-flex justify-content-between small"><span>Total</span><span id="receiptTotal" class="fw-semibold">₱0.00</span></div>
                   </div>
                 </div>
@@ -168,9 +169,8 @@ if (!in_array($role, $allowed_roles, true)){
 
                 <div class="d-flex gap-2 justify-content-center mt-3">
                   <span class="badge text-bg-light border">F2 Search</span>
-                  <span class="badge text-bg-light border">F3 Void</span>
+                  <span class="badge text-bg-light border">F3 Void Selected</span>
                   <span class="badge text-bg-light border">F4 Pay</span>
-                  <span class="badge text-bg-light border">F5 Clear</span>
                 </div>
                 <div class="small text-muted text-center mt-2">Payment: 1 Cash · 2 GCash · 3 Maya · 4 MariBank</div>
               </div>

@@ -5,6 +5,7 @@
  * This is our "artisan": run commands from the repo root, e.g.
  *     php console.php list
  *     php console.php users:list
+ *     php console.php db:migrate
  *     php console.php db:seed
  *
  * It REFUSES to run over the web (see the guard below), so commands like
@@ -24,6 +25,10 @@ require __DIR__ . '/api/config.php';   // defines $pdo (header() calls are no-op
 $command = $argv[1] ?? 'list';
 
 switch ($command) {
+    case 'db:migrate':
+        dbMigrate($pdo);
+        break;
+
     case 'db:seed':
         dbSeed($pdo);
         break;
@@ -44,6 +49,99 @@ switch ($command) {
 }
 
 // ---------------------------- commands ----------------------------
+
+/**
+ * Apply every unapplied file in migrations/ in filename order.
+ *
+ * Applied filenames are tracked in the `schema_migrations` table, so this can
+ * be run safely on every pull. Each file is plain SQL: DDL + DML statements
+ * separated by semicolons (no DELIMITER / stored procedures).
+ */
+function dbMigrate(PDO $pdo): void
+{
+    $migrationsDir = __DIR__ . '/migrations';
+    if (!is_dir($migrationsDir)) {
+        echo "No migrations/ directory found. Nothing to do.\n";
+        return;
+    }
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS schema_migrations (
+            migration  VARCHAR(255) NOT NULL PRIMARY KEY,
+            applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB'
+    );
+
+    $files = glob($migrationsDir . '/*.sql') ?: [];
+    sort($files, SORT_STRING);
+
+    if ($files === []) {
+        echo "No migration files found. Nothing to do.\n";
+        return;
+    }
+
+    $applied = $pdo->query('SELECT migration FROM schema_migrations')
+        ->fetchAll(PDO::FETCH_COLUMN);
+    $applied = array_flip($applied);
+
+    $ran = 0;
+    foreach ($files as $file) {
+        $name = basename($file);
+
+        if (isset($applied[$name])) {
+            echo "  skip  {$name} (already applied)\n";
+            continue;
+        }
+
+        try {
+            foreach (splitSqlStatements((string) file_get_contents($file)) as $statement) {
+                $pdo->exec($statement);
+            }
+
+            $stmt = $pdo->prepare('INSERT INTO schema_migrations (migration) VALUES (:migration)');
+            $stmt->execute([':migration' => $name]);
+
+            echo "  run   {$name}\n";
+            $ran++;
+        } catch (Throwable $e) {
+            fwrite(STDERR, "  FAIL  {$name}: {$e->getMessage()}\n");
+            fwrite(STDERR, "Fix the SQL, then run `php console.php db:migrate` again.\n");
+            exit(1);
+        }
+    }
+
+    echo $ran === 0
+        ? "Nothing to migrate. Database is up to date.\n"
+        : "Applied {$ran} migration(s).\n";
+}
+
+/**
+ * Split a .sql file into individual statements.
+ * Simple on purpose: strips full-line `--` comments, then splits on `;`.
+ * Good enough for our DDL/DML migrations; it does not understand DELIMITER.
+ */
+function splitSqlStatements(string $sql): array
+{
+    $lines = preg_split('/\r\n|\r|\n/', $sql) ?: [];
+    $clean = [];
+
+    foreach ($lines as $line) {
+        if (strpos(ltrim($line), '--') === 0) {
+            continue;   // whole-line comment
+        }
+        $clean[] = $line;
+    }
+
+    $statements = [];
+    foreach (explode(';', implode("\n", $clean)) as $statement) {
+        $statement = trim($statement);
+        if ($statement !== '') {
+            $statements[] = $statement;
+        }
+    }
+
+    return $statements;
+}
 
 function dbSeed(PDO $pdo): void
 {
@@ -74,6 +172,7 @@ function printHelp(): void
     echo "POS System console\n\n";
     echo "Usage: php console.php <command>\n\n";
     echo "Commands:\n";
+    echo "  db:migrate   Apply unapplied files in migrations/ (safe to re-run)\n";
     echo "  db:seed      Hash + reset every user's password to password123\n";
     echo "  users:list   Show all users\n";
     echo "  list         Show this help\n";

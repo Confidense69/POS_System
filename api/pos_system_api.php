@@ -14,6 +14,17 @@ $action = $_GET['action'] ?? '';
 $data = json_decode(file_get_contents('php://input'), true) ?? [];
 $method = $_SERVER['REQUEST_METHOD'];
 
+/**
+ * Stop the request with a JSON error response. Used for request validation
+ * that happens before any database writes / transactions.
+ */
+function json_error(string $message, int $status = 400): void
+{
+    http_response_code($status);
+    echo json_encode(['status' => 'error', 'message' => $message]);
+    exit;
+}
+
 try{
     switch ($action) {
 
@@ -195,43 +206,99 @@ try{
         $cart = $data['cart'] ?? [];
         $cashierId = $_SESSION['user_id'] ?? null;
 
-        if (empty($cart)) {
-            echo json_encode(['status' => 'error', 'message' => 'Cart is empty']);
-            exit;
+        if (!is_array($cart) || count($cart) === 0) {
+            json_error('Cart is empty');
         }
 
-        $taxRate      = isset($data['tax_rate']) ? (float)$data['tax_rate'] : 0.12;
-        $customerType = empty($data['customer_type']) ? 'regular' : strtolower(trim((string)$data['customer_type']));
-        $idNumber     = empty($data['id_number']) ? null : trim((string)$data['id_number']);
-        $paymentMethod = empty($data['payment_method']) ? 'cash' : strtolower(trim((string)$data['payment_method']));
+        // Never trust the client for money: the tax rate is fixed server-side
+        // and prices are re-read from the products table below.
+        $taxRate       = DEFAULT_VAT_RATE;
+        $customerType  = strtolower(trim((string)($data['customer_type'] ?? 'regular')));
+        $idNumber      = trim((string)($data['id_number'] ?? ''));
+        $paymentMethod = strtolower(trim((string)($data['payment_method'] ?? 'cash')));
 
         if (!in_array($customerType, ['regular', 'pwd', 'senior'], true)) {
             $customerType = 'regular';
         }
-
         if (!in_array($paymentMethod, ['cash', 'gcash', 'maya', 'maribank'], true)) {
             $paymentMethod = 'cash';
+        }
+        if ($idNumber === '') {
+            $idNumber = null;
+        }
+
+        // Validate + normalize the cart, merging duplicate product lines.
+        $requested = [];
+        foreach ($cart as $index => $item) {
+            if (!is_array($item) || !array_key_exists('product_id', $item) || !array_key_exists('quantity', $item)) {
+                json_error('Invalid cart item at position ' . ($index + 1) . '.');
+            }
+
+            $productId = filter_var($item['product_id'], FILTER_VALIDATE_INT);
+            $quantity  = filter_var($item['quantity'], FILTER_VALIDATE_INT);
+
+            if ($productId === false || $productId < 1) {
+                json_error('Invalid product in cart at position ' . ($index + 1) . '.');
+            }
+            if ($quantity === false || $quantity < 1) {
+                json_error('Quantity must be a whole number of at least 1 (position ' . ($index + 1) . ').');
+            }
+
+            $requested[$productId] = ($requested[$productId] ?? 0) + $quantity;
+        }
+
+        // Re-read authoritative prices / stock / active state from the database.
+        $ids          = array_keys($requested);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $productStmt  = $pdo->prepare("SELECT id, name, price, stock_qty, is_active FROM products WHERE id IN ($placeholders)");
+        $productStmt->execute($ids);
+
+        $products = [];
+        foreach ($productStmt->fetchAll() as $row) {
+            $products[(int)$row['id']] = $row;
+        }
+
+        $lineItems = [];
+        foreach ($requested as $productId => $quantity) {
+            if (!isset($products[$productId])) {
+                json_error('Product #' . $productId . ' no longer exists.');
+            }
+
+            $product = $products[$productId];
+
+            if ((int)$product['is_active'] !== 1) {
+                json_error('"' . $product['name'] . '" is no longer available.');
+            }
+            if ((int)$product['stock_qty'] < $quantity) {
+                json_error('Not enough stock for "' . $product['name'] . '" (available: ' . (int)$product['stock_qty'] . ').');
+            }
+
+            $lineItems[] = [
+                'product_id' => $productId,
+                'name'       => $product['name'],
+                'price'      => (float)$product['price'],
+                'quantity'   => $quantity,
+            ];
+        }
+
+        try {
+            $totals = calculate_tax_and_totals($lineItems, $taxRate, $customerType, $idNumber);
+        } catch (InvalidArgumentException $e) {
+            json_error($e->getMessage());
         }
 
         $pdo->beginTransaction();
         try {
-            $totals = calculate_tax_and_totals($cart, $taxRate, $customerType, $idNumber);
-
-            //$subtotal = 0;
-            //foreach ($cart as $item) {
-            //    $subtotal += $item['price'] * $item['quantity'];
-            //}
-            //$taxAmt = $subtotal * 0.08;
-            //$total  = $subtotal + $taxAmt;
-
-            // 1. Save Transaction
-            $txnStmt = $pdo->prepare("INSERT INTO transactions (cashier_id, customer_type, discount_id, tax_rate, subtotal, discount_amt, tax_amt, total, payment_method) VALUES (:cashier, :customer_type, :discount_id, :tax_rate, :subtotal, :discount, :tax, :total, :payment_method)");
+            // 1. Save Transaction (full VAT breakdown is stored for reports)
+            $txnStmt = $pdo->prepare("INSERT INTO transactions (cashier_id, customer_type, discount_id, tax_rate, subtotal, vatable_sales, vat_exempt_sales, discount_amt, tax_amt, total, payment_method) VALUES (:cashier, :customer_type, :discount_id, :tax_rate, :subtotal, :vatable, :vat_exempt, :discount, :tax, :total, :payment_method)");
             $txnStmt->execute([
                 ':cashier'        => $cashierId,
                 ':customer_type'  => $totals['customer_type'],
                 ':discount_id'    => $totals['discount_id'],
                 ':tax_rate'       => $totals['tax_rate_applied'],
                 ':subtotal'       => $totals['gross_subtotal'],
+                ':vatable'        => $totals['vatable_sales'],
+                ':vat_exempt'     => $totals['vat_exempt_sales'],
                 ':discount'       => $totals['discount_amount'],
                 ':tax'            => $totals['vat_amount'],
                 ':total'          => $totals['net_total'],
@@ -239,29 +306,33 @@ try{
             ]);
             $txnId = $pdo->lastInsertId();
 
-            // 2. Save Items & Deduct Stock
+            // 2. Save Items & Deduct Stock (guarded so stock can never go negative)
             $itemStmt  = $pdo->prepare("INSERT INTO transaction_items (transaction_id, product_id, quantity, unit_price, line_total) VALUES (:tx_id, :prod_id, :qty, :price, :line_total)");
-            $stockStmt = $pdo->prepare("UPDATE products SET stock_qty = stock_qty - :qty WHERE id = :prod_id");
+            $stockStmt = $pdo->prepare("UPDATE products SET stock_qty = stock_qty - ? WHERE id = ? AND is_active = 1 AND stock_qty >= ?");
 
-            foreach ($cart as $item) {
-                $lineTotal = $item['price'] * $item['quantity'];
+            foreach ($lineItems as $item) {
                 $itemStmt->execute([
                     ':tx_id'      => $txnId,
                     ':prod_id'    => $item['product_id'],
                     ':qty'        => $item['quantity'],
                     ':price'      => $item['price'],
-                    ':line_total' => $lineTotal
+                    ':line_total' => round($item['price'] * $item['quantity'], 2)
                 ]);
-                $stockStmt->execute([
-                    ':qty'     => $item['quantity'],
-                    ':prod_id' => $item['product_id']
-                ]);
+
+                $stockStmt->execute([$item['quantity'], $item['product_id'], $item['quantity']]);
+                if ($stockStmt->rowCount() === 0) {
+                    // Another sale changed the stock between validation and now.
+                    throw new RuntimeException('Stock for "' . $item['name'] . '" changed during checkout. Please try again.');
+                }
             }
 
             $pdo->commit();
             echo json_encode(['status' => 'success', 'message' => 'Checkout complete!', 'transaction_id' => $txnId, 'summary' => $totals]);
-        } catch (Exception $e) {
-            $pdo->rollBack();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Transaction failed: ' . $e->getMessage()]);
         }
         break;
@@ -278,6 +349,7 @@ try{
         t.id, t.created_at, u.full_name AS cashier,
         t.payment_method, t.total
         FROM transactions t LEFT JOIN users u ON t.cashier_id = u.id 
+        WHERE t.is_voided = 0
         ORDER BY t.created_at DESC LIMIT 10
         ")->fetchAll();
 

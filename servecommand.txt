@@ -1,1 +1,40 @@
+Run the app
+-----------
 php -S localhost:8080 -t "<path to this repo>"
+
+Then open http://localhost:8080/index.html
+
+
+Database
+--------
+This is plain PHP + MySQL/MariaDB (XAMPP). There is no framework, so use the
+small CLI in console.php instead of artisan.
+
+Show all commands:
+  php console.php list
+
+Fresh machine (database does not exist yet):
+  mysql -u root < database.sql
+  php console.php db:seed
+
+Already have the pos_accounting database (e.g. after git pull):
+  php console.php db:migrate
+  php console.php db:seed      (only if existing logins stop working)
+
+db:migrate applies every file in migrations/ that has not been recorded in the
+schema_migrations table, in filename order. It is safe to re-run.
+
+db:seed re-hashes the password of admin / manager / cashier to "password123".
+
+PowerShell note: redirection with "<" does not work. Use either:
+  Get-Content database.sql | C:\xampp\mysql\bin\mysql.exe -u root
+  C:\xampp\mysql\bin\mysql.exe -u root -e "source C:/path/to/database.sql"
+
+Verify the VAT columns exist:
+  C:\xampp\mysql\bin\mysql.exe -u root pos_accounting -e "SHOW COLUMNS FROM transactions;"
+
+
+Pulling on another laptop
+-------------------------
+git pull
+php console.php db:migrate

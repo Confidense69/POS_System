@@ -9,27 +9,89 @@ const paymentMethod = document.getElementById('paymentMethod');
 
 const subtotalValue = document.getElementById('subtotalValue');
 const discountValue = document.getElementById('discountValue');
+const taxLabel = document.getElementById('taxLabel');
 const taxValue = document.getElementById('taxValue');
 const totalValue = document.getElementById('totalValue');
+
 const receiptItems = document.getElementById('receiptItems');
 const receiptSubtotal = document.getElementById('receiptSubtotal');
+const receiptDiscount = document.getElementById('receiptDiscount');
+const receiptTaxLabel = document.getElementById('receiptTaxLabel');
 const receiptTax = document.getElementById('receiptTax');
 const receiptTotal = document.getElementById('receiptTotal');
+
 const qrImage = document.getElementById('qrImage');
 const qrDisplayWrap = document.getElementById('qrDisplayWrap');
 
+// Must match api/tax_engine.php.
+const VAT_RATE = 0.12;
+const DISCOUNT_RATE = 0.20;
+
 const cart = [];
+let selectedIndex = -1;
+let checkoutInProgress = false;
+
 const qrImages = {
     gcash: '../assets/qrs/gcash.jpg',
     maya: '../assets/qrs/maya.jpg',
     maribank: '../assets/qrs/maribank.jpg'
 };
 
+function round2(value) {
+    return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
 function currency(value) {
     return Number(value || 0).toLocaleString('en-PH', {
         style: 'currency',
         currency: 'PHP'
     });
+}
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function (char) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char];
+    });
+}
+
+function isDiscountedSale() {
+    const type = (customerType.value || 'regular').toLowerCase();
+    return type === 'senior' || type === 'pwd';
+}
+
+/**
+ * Mirror of api/tax_engine.php. Product prices are VAT-exclusive, so 12% VAT
+ * is added on top of the subtotal. Senior/PWD sales are VAT-exempt and get
+ * 20% off the net subtotal instead.
+ */
+function computeTotals() {
+    const gross = round2(cart.reduce(function (sum, item) {
+        return sum + Number(item.price) * Number(item.quantity);
+    }, 0));
+
+    if (isDiscountedSale()) {
+        const discount = round2(gross * DISCOUNT_RATE);
+        return {
+            gross: gross,
+            vat: 0,
+            discount: discount,
+            total: round2(gross - discount)
+        };
+    }
+
+    const vat = round2(gross * VAT_RATE);
+    return {
+        gross: gross,
+        vat: vat,
+        discount: 0,
+        total: round2(gross + vat)
+    };
 }
 
 function updateQrDisplay() {
@@ -46,34 +108,28 @@ function updateQrDisplay() {
     qrImage.alt = `${paymentMethod.options[paymentMethod.selectedIndex].text} payment QR code`;
 }
 
+function updateCustomerTypeUi() {
+    const discounted = isDiscountedSale();
+    idNumber.required = discounted;
+    idNumber.placeholder = discounted ? 'Required for Senior / PWD' : 'Only needed for Senior / PWD';
+}
+
 function updateSummary() {
-    const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
-    const type = (customerType.value || 'regular').toLowerCase();
-    const isDiscounted = type === 'senior' || type === 'pwd';
+    const totals = computeTotals();
+    const taxLabelText = isDiscountedSale() ? 'VAT (exempt)' : 'VAT (12%)';
 
-    let discount = 0;
-    let tax = 0;
-    let total = subtotal;
+    taxLabel.textContent = taxLabelText;
+    receiptTaxLabel.textContent = taxLabelText;
 
-    if (isDiscounted) {
-        const vatExemptSales = subtotal / 1.12;
-        discount = vatExemptSales * 0.20;
-        total = vatExemptSales - discount;
-        tax = 0;
-    } else {
-        tax = subtotal * 0.12;
-        total = subtotal + tax;
-    }
+    subtotalValue.textContent = currency(totals.gross);
+    discountValue.textContent = currency(totals.discount);
+    taxValue.textContent = currency(totals.vat);
+    totalValue.textContent = currency(totals.total);
 
-    subtotalValue.textContent = currency(subtotal);
-    discountValue.textContent = currency(discount);
-    taxValue.textContent = currency(tax);
-    totalValue.textContent = currency(total);
-
-    receiptSubtotal.textContent = currency(subtotal);
-    receiptTax.textContent = currency(tax);
-    receiptTotal.textContent = currency(total);
-    updateQrDisplay();
+    receiptSubtotal.textContent = currency(totals.gross);
+    receiptDiscount.textContent = currency(totals.discount);
+    receiptTax.textContent = currency(totals.vat);
+    receiptTotal.textContent = currency(totals.total);
 }
 
 function renderReceipt() {
@@ -82,33 +138,44 @@ function renderReceipt() {
         return;
     }
 
-    const itemsHtml = cart.map(item => `
-        <div class="d-flex justify-content-between gap-2">
-            <span>${item.name} x${item.quantity}</span>
-            <span>${currency(item.price * item.quantity)}</span>
-        </div>
-    `).join('');
-
-    receiptItems.innerHTML = itemsHtml;
+    receiptItems.innerHTML = cart.map(function (item) {
+        return `
+            <div class="d-flex justify-content-between gap-2">
+                <span>${escapeHtml(item.name)} x${item.quantity}</span>
+                <span>${currency(item.price * item.quantity)}</span>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderCart() {
     clearCartBtn.disabled = cart.length === 0;
+    checkoutBtn.disabled = checkoutInProgress || cart.length === 0;
     tbody.innerHTML = '';
 
     if (cart.length === 0) {
+        selectedIndex = -1;
         tbody.innerHTML = '<tr id="emptyRow"><td colspan="4" class="text-center text-muted py-4">No items in this sale.</td></tr>';
         updateSummary();
         renderReceipt();
         return;
     }
 
-    cart.forEach((item, index) => {
+    if (selectedIndex >= cart.length) {
+        selectedIndex = cart.length - 1;
+    }
+
+    cart.forEach(function (item, index) {
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        if (index === selectedIndex) {
+            tr.classList.add('table-active');
+        }
+        tr.dataset.index = index;
         tr.innerHTML = `
             <td>
-                <div class="fw-semibold">${item.name}</div>
-                <small class="text-muted">${item.barcode}</small>
+                <div class="fw-semibold">${escapeHtml(item.name)}</div>
+                <small class="text-muted">${escapeHtml(item.barcode)}</small>
             </td>
             <td class="text-center">
                 <div class="btn-group btn-group-sm" role="group">
@@ -142,45 +209,86 @@ async function addByBarCode() {
         }
 
         const product = data[0];
-        const existing = cart.find(item => item.product_id === product.id);
+
+        if (Number(product.is_active) !== 1) {
+            alert(`"${product.name}" is no longer available.`);
+            input.value = '';
+            return;
+        }
+
+        const stockQty = Number(product.stock_qty);
+        const existing = cart.find(function (item) {
+            return item.product_id === Number(product.id);
+        });
 
         if (existing) {
+            if (existing.quantity >= stockQty) {
+                alert(`Only ${stockQty} in stock for "${product.name}".`);
+                input.value = '';
+                return;
+            }
             existing.quantity += 1;
+            selectedIndex = cart.indexOf(existing);
         } else {
+            if (stockQty < 1) {
+                alert(`"${product.name}" is out of stock.`);
+                input.value = '';
+                return;
+            }
             cart.push({
-                product_id: product.id,
+                product_id: Number(product.id),
                 barcode: product.barcode,
                 name: product.name,
                 price: Number(product.price),
+                stock_qty: stockQty,
                 quantity: 1
             });
+            selectedIndex = cart.length - 1;
         }
 
         renderCart();
         input.value = '';
+        input.focus();
     } catch (error) {
         console.error(error);
         alert('Unable to fetch product.');
     }
 }
 
-async function checkout() {
+function validateCheckout() {
     if (cart.length === 0) {
         alert('Cart is empty.');
+        return false;
+    }
+    if (isDiscountedSale() && !idNumber.value.trim()) {
+        alert('ID Number is required for Senior Citizen / PWD discounts.');
+        idNumber.focus();
+        return false;
+    }
+    return true;
+}
+
+async function checkout() {
+    if (checkoutInProgress || !validateCheckout()) {
         return;
     }
 
     const payload = {
-        cart: cart.map(item => ({
-            product_id: item.product_id,
-            quantity: item.quantity,
-            price: item.price
-        })),
-        tax_rate: 0.12,
+        cart: cart.map(function (item) {
+            return {
+                product_id: item.product_id,
+                quantity: item.quantity
+            };
+        }),
         customer_type: customerType.value,
         id_number: idNumber.value.trim(),
         payment_method: paymentMethod.value
     };
+
+    const originalLabel = checkoutBtn.textContent;
+    checkoutInProgress = true;
+    checkoutBtn.disabled = true;
+    checkoutBtn.textContent = 'Processing...';
 
     try {
         const res = await fetch('../api/pos_system_api.php?action=checkout', {
@@ -191,26 +299,48 @@ async function checkout() {
             body: JSON.stringify(payload)
         });
 
-        const result = await res.json();
+        const result = await res.json().catch(function () {
+            return { status: 'error', message: 'Server returned an invalid response.' };
+        });
 
         if (!res.ok || result.status !== 'success') {
             throw new Error(result.message || 'Checkout failed.');
         }
 
-        alert('Checkout successful! Transaction ID: ' + result.transaction_id);
+        const paid = result.summary ? currency(result.summary.net_total) : '';
+        alert('Checkout successful! Transaction ID: ' + result.transaction_id + (paid ? '\nTotal: ' + paid : ''));
         cart.length = 0;
+        selectedIndex = -1;
+        idNumber.value = '';
         renderCart();
         input.value = '';
     } catch (error) {
         console.error(error);
         alert(error.message || 'Checkout failed.');
+    } finally {
+        checkoutInProgress = false;
+        checkoutBtn.textContent = originalLabel;
+        checkoutBtn.disabled = cart.length === 0;
+        input.focus();
     }
 }
 
 function clearCart() {
+    if (cart.length === 0) return;
+    if (!confirm('Clear all items from this sale?')) return;
     cart.length = 0;
+    selectedIndex = -1;
     renderCart();
     input.value = '';
+    input.focus();
+}
+
+function voidSelectedRow() {
+    if (cart.length === 0) return;
+    const index = selectedIndex >= 0 ? selectedIndex : cart.length - 1;
+    cart.splice(index, 1);
+    selectedIndex = Math.min(index, cart.length - 1);
+    renderCart();
     input.focus();
 }
 
@@ -222,25 +352,40 @@ input.addEventListener('keydown', function (e) {
     }
 });
 
-customerType.addEventListener('change', updateSummary);
-idNumber.addEventListener('input', updateSummary);
+customerType.addEventListener('change', function () {
+    updateCustomerTypeUi();
+    updateSummary();
+});
 paymentMethod.addEventListener('change', updateQrDisplay);
 checkoutBtn.addEventListener('click', checkout);
 clearCartBtn.addEventListener('click', clearCart);
 
 tbody.addEventListener('click', function (event) {
+    const row = event.target.closest('tr[data-index]');
+    if (row) {
+        selectedIndex = Number(row.dataset.index);
+    }
+
     const btnTarget = event.target.closest('button[data-action]');
-    if (!btnTarget) return;
+    if (!btnTarget) {
+        renderCart();
+        return;
+    }
 
     const index = Number(btnTarget.dataset.index);
     const action = btnTarget.dataset.action;
 
     if (action === 'increase') {
-        cart[index].quantity += 1;
+        if (cart[index].quantity >= cart[index].stock_qty) {
+            alert(`Only ${cart[index].stock_qty} in stock for "${cart[index].name}".`);
+        } else {
+            cart[index].quantity += 1;
+        }
     } else if (action === 'decrease') {
         cart[index].quantity -= 1;
         if (cart[index].quantity <= 0) {
             cart.splice(index, 1);
+            selectedIndex = Math.min(index, cart.length - 1);
         }
     }
 
@@ -256,16 +401,10 @@ document.addEventListener('keydown', function (event) {
         input.focus();
     } else if (event.key === 'F3') {
         event.preventDefault();
-        if (cart.length > 0) {
-            cart.pop();
-            renderCart();
-        }
+        voidSelectedRow();
     } else if (event.key === 'F4') {
         event.preventDefault();
         checkout();
-    } else if (event.key === 'F5') {
-        event.preventDefault();
-        clearCart();
     } else if (event.key === 'Escape' && !isTyping) {
         input.value = '';
         input.focus();
@@ -284,5 +423,5 @@ document.addEventListener('keydown', function (event) {
 });
 
 renderCart();
+updateCustomerTypeUi();
 updateQrDisplay();
-   
