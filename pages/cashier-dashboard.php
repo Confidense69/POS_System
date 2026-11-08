@@ -40,8 +40,16 @@ if (!in_array($role, $allowed_roles, true)){
       <span class="role-tag align-self-start mb-3"><?php echo htmlspecialchars($_SESSION['role'] ?? 'Cashier'); ?></span>
       <ul class="nav nav-pills flex-column gap-1">
         <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-cart3"></i> POS / New Sale</a></li>
-        <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-clock-history"></i> My Transactions</a></li>
-        <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-arrow-counterclockwise"></i> Void / Refund</a></li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="openHistoryLink" data-bs-toggle="modal" data-bs-target="#historyModal">
+            <i class="bi bi-clock-history"></i> My Transactions
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#historyModal">
+            <i class="bi bi-arrow-counterclockwise"></i> Void / Refund
+          </a>
+        </li>
       </ul>
       <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
     </aside>
@@ -59,7 +67,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-success-subtle"><i class="bi bi-cash-coin"></i></div>
-                <div><div class="text-muted small">Today's Sales</div><div class="h5 mb-0">&#8369;0.00</div></div>
+                <div><div class="text-muted small">Today's Sales</div><div class="h5 mb-0" id="statSales">&#8369;0.00</div></div>
               </div>
             </div>
           </div>
@@ -67,7 +75,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-info-subtle"><i class="bi bi-upc-scan"></i></div>
-                <div><div class="text-muted small">Items Scanned</div><div class="h5 mb-0">0</div></div>
+                <div><div class="text-muted small">Items Scanned</div><div class="h5 mb-0" id="statItems">0</div></div>
               </div>
             </div>
           </div>
@@ -75,7 +83,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-secondary-subtle"><i class="bi bi-receipt"></i></div>
-                <div><div class="text-muted small">Transactions</div><div class="h5 mb-0">0</div></div>
+                <div><div class="text-muted small">Transactions</div><div class="h5 mb-0" id="statTransactions">0</div></div>
               </div>
             </div>
           </div>
@@ -87,9 +95,12 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card">
               <div class="card-header bg-white fw-semibold">New Sale</div>
               <div class="card-body">
-                <div class="input-group mb-3">
-                  <input type="text" class="form-control" placeholder="Type or scan barcode here..." id="barcodeInput"> 
-                  <button class="btn btn-primary" id="addItemBtn">Add Item</button>
+                <div class="position-relative mb-3">
+                  <div class="input-group">
+                    <input type="text" class="form-control" placeholder="Scan barcode or type a product name..." id="barcodeInput" autocomplete="off" autofocus>
+                    <button class="btn btn-primary" id="addItemBtn">Add Item</button>
+                  </div>
+                  <div id="searchResults" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1050;"></div>
                 </div>
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
@@ -131,6 +142,13 @@ if (!in_array($role, $allowed_roles, true)){
                     <option value="maya">Maya</option>
                     <option value="maribank">MariBank</option>
                   </select>
+                </div>
+                <div id="cashRow" class="mb-3">
+                  <label class="form-label small text-muted" for="cashTendered">Cash Tendered</label>
+                  <input id="cashTendered" type="number" step="0.01" min="0" class="form-control form-control-sm" placeholder="0.00">
+                  <div class="d-flex justify-content-between small mt-1">
+                    <span class="text-muted">Change</span><span id="changeValue">&#8369;0.00</span>
+                  </div>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                   <span class="text-muted">Subtotal</span><span id="subtotalValue">&#8369;0.00</span>
@@ -181,6 +199,60 @@ if (!in_array($role, $allowed_roles, true)){
     </main>
   </div>
 
-<script src="../js/cashier-pos.js"></script>
+  <!-- Modal: receipt (post-checkout and history view) -->
+  <div class="modal fade" id="receiptModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Soft Copy Receipt</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="receiptBody"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="printReceiptBtn">Print</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: my transactions -->
+  <div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">My Transactions</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Txn</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Payment</th>
+                  <th class="text-end">Total</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr><td colspan="7" class="text-center text-muted py-4">No transactions yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" id="refreshHistoryBtn">Refresh</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../js/cashier-pos.js"></script>
 </body>
 </html>
