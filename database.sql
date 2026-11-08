@@ -108,6 +108,17 @@ CREATE TABLE IF NOT EXISTS restock_log (
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
+-- settings (key/value store for store-wide options)
+-- vat_rate is a PERCENT: 12.00 = 12%. The API divides by 100.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS settings (
+  setting_key   VARCHAR(50)  NOT NULL PRIMARY KEY,
+  setting_value VARCHAR(255) NOT NULL
+) ENGINE=InnoDB;
+
+INSERT INTO settings (setting_key, setting_value) VALUES ('vat_rate', '12.00');
+
+-- ------------------------------------------------------------
 -- employees (for payroll) + salaries
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS employees (

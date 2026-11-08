@@ -25,8 +25,71 @@ function json_error(string $message, int $status = 400): void
     exit;
 }
 
+/** VAT rates the admin is allowed to choose from (percent). */
+const ALLOWED_VAT_RATES = [12, 16, 20];
+
+/**
+ * Read the store VAT rate as a DECIMAL RATE (12 -> 0.12).
+ *
+ * The value lives in the settings table as a percent. If the table has not
+ * been migrated yet (or holds garbage), fall back to the old 12% default so
+ * checkout keeps working instead of throwing a 500.
+ */
+function current_vat_rate(PDO $pdo): float
+{
+    try {
+        $value = $pdo->query("SELECT setting_value FROM settings WHERE setting_key = 'vat_rate'")->fetchColumn();
+    } catch (Throwable $e) {
+        return DEFAULT_VAT_RATE;
+    }
+
+    $percent = is_numeric($value) ? (float)$value : 0.0;
+    if (!in_array((int)$percent, ALLOWED_VAT_RATES, true)) {
+        return DEFAULT_VAT_RATE;
+    }
+
+    return $percent / 100;
+}
+
 try{
     switch ($action) {
+
+    // ----------------------------------------------------
+    // 0. STORE SETTINGS
+    // ----------------------------------------------------
+    case 'get_settings':
+        echo json_encode([
+            'status' => 'success',
+            'data'   => [
+                'vat_rate'          => (int)round(current_vat_rate($pdo) * 100),
+                'allowed_vat_rates' => ALLOWED_VAT_RATES,
+            ],
+        ]);
+        break;
+
+    case 'update_settings':
+        // Store-wide config is an admin-only action.
+        if (($_SESSION['role'] ?? '') !== 'admin') {
+            json_error('Only an admin can change store settings', 403);
+        }
+
+        $vatRate = filter_var($data['vat_rate'] ?? null, FILTER_VALIDATE_INT);
+        if ($vatRate === false || !in_array($vatRate, ALLOWED_VAT_RATES, true)) {
+            json_error('VAT rate must be one of 12, 16 or 20');
+        }
+
+        $stmt = $pdo->prepare(
+            "INSERT INTO settings (setting_key, setting_value) VALUES ('vat_rate', :value)
+             ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
+        );
+        $stmt->execute([':value' => number_format($vatRate, 2, '.', '')]);
+
+        echo json_encode([
+            'status'  => 'success',
+            'message' => 'VAT rate updated',
+            'data'    => ['vat_rate' => $vatRate],
+        ]);
+        break;
 
     // ----------------------------------------------------
     // 1. ACCOUNT MANAGEMENT
@@ -64,6 +127,28 @@ try{
             LEFT JOIN suppliers s ON p.supplier_id = s.id 
             ORDER BY p.id DESC
         ");
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+        break;
+
+    case 'search_products':
+        // Barcode-or-name lookup for the cashier register.
+        $q = trim((string)($_GET['q'] ?? ''));
+        if ($q === '') {
+            echo json_encode(['status' => 'success', 'data' => []]);
+            break;
+        }
+
+        $like = '%' . $q . '%';
+        $stmt = $pdo->prepare("
+            SELECT id, barcode, name, price, stock_qty, is_active
+            FROM products
+            WHERE is_active = 1
+              AND (barcode = ? OR barcode LIKE ? OR name LIKE ?)
+            ORDER BY (barcode = ?) DESC, name ASC
+            LIMIT 10
+        ");
+        $stmt->execute([$q, $like, $like, $q]);
+
         echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
         break;
 
@@ -210,9 +295,9 @@ try{
             json_error('Cart is empty');
         }
 
-        // Never trust the client for money: the tax rate is fixed server-side
-        // and prices are re-read from the products table below.
-        $taxRate       = DEFAULT_VAT_RATE;
+        // Never trust the client for money: the tax rate comes from the
+        // admin setting and prices are re-read from the products table below.
+        $taxRate       = current_vat_rate($pdo);
         $customerType  = strtolower(trim((string)($data['customer_type'] ?? 'regular')));
         $idNumber      = trim((string)($data['id_number'] ?? ''));
         $paymentMethod = strtolower(trim((string)($data['payment_method'] ?? 'cash')));
@@ -327,13 +412,198 @@ try{
             }
 
             $pdo->commit();
-            echo json_encode(['status' => 'success', 'message' => 'Checkout complete!', 'transaction_id' => $txnId, 'summary' => $totals]);
+
+            // Read the timestamp back so the receipt shows DATABASE time
+            // (PHP and MySQL can be in different timezones on a laptop).
+            $createdStmt = $pdo->prepare("SELECT created_at FROM transactions WHERE id = :id");
+            $createdStmt->execute([':id' => $txnId]);
+            $createdAt = $createdStmt->fetchColumn();
+
+            // Everything the soft-copy receipt prints comes from here, so the
+            // browser never has to re-derive money from its own cart.
+            echo json_encode([
+                'status'         => 'success',
+                'message'        => 'Checkout complete!',
+                'transaction_id' => (int)$txnId,
+                'created_at'     => $createdAt,
+                'cashier'        => $_SESSION['full_name'] ?? 'Cashier',
+                'payment_method' => $paymentMethod,
+                'customer_type'  => $totals['customer_type'],
+                'discount_id'    => $totals['discount_id'],
+                'items'          => array_map(function (array $item): array {
+                    return [
+                        'name'       => $item['name'],
+                        'quantity'   => $item['quantity'],
+                        'unit_price' => $item['price'],
+                        'line_total' => round($item['price'] * $item['quantity'], 2),
+                    ];
+                }, $lineItems),
+                'summary'        => $totals,
+            ]);
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Transaction failed: ' . $e->getMessage()]);
+        }
+        break;
+
+    case 'get_transactions':
+        // Sales history. Cashiers are always limited to their own sales.
+        $limit = filter_var($_GET['limit'] ?? 50, FILTER_VALIDATE_INT);
+        if ($limit === false || $limit < 1) {
+            $limit = 50;
+        }
+        if ($limit > 200) {
+            $limit = 200;
+        }
+
+        $role  = $_SESSION['role'] ?? 'cashier';
+        $scope = (string)($_GET['scope'] ?? 'all');
+        $today = (string)($_GET['today'] ?? '') === '1';
+
+        $where  = [];
+        $params = [];
+
+        if ($role === 'cashier' || $scope === 'mine') {
+            $where[]            = 't.cashier_id = :cashier_id';
+            $params[':cashier_id'] = $_SESSION['user_id'];
+        }
+        if ($today) {
+            $where[] = 'DATE(t.created_at) = CURDATE()';
+        }
+        $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $stmt = $pdo->prepare("
+            SELECT t.id, t.created_at, t.cashier_id, u.full_name AS cashier,
+                   t.customer_type, t.discount_id, t.tax_rate, t.subtotal,
+                   t.vatable_sales, t.vat_exempt_sales, t.discount_amt, t.tax_amt,
+                   t.total, t.payment_method, t.is_voided,
+                   v.full_name AS voided_by_name
+            FROM transactions t
+            LEFT JOIN users u ON t.cashier_id = u.id
+            LEFT JOIN users v ON t.voided_by = v.id
+            $whereSql
+            ORDER BY t.id DESC
+            LIMIT $limit
+        ");
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+
+        // Attach the line items in ONE extra query (not one per transaction).
+        if ($rows) {
+            $ids          = array_column($rows, 'id');
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $itemStmt     = $pdo->prepare("
+                SELECT ti.transaction_id, ti.product_id, ti.quantity,
+                       ti.unit_price, ti.line_total, COALESCE(p.name, 'Deleted product') AS name
+                FROM transaction_items ti
+                LEFT JOIN products p ON ti.product_id = p.id
+                WHERE ti.transaction_id IN ($placeholders)
+                ORDER BY ti.id
+            ");
+            $itemStmt->execute($ids);
+
+            $itemsByTxn = [];
+            foreach ($itemStmt->fetchAll() as $item) {
+                $itemsByTxn[(int)$item['transaction_id']][] = $item;
+            }
+
+            foreach ($rows as &$row) {
+                $row['items'] = $itemsByTxn[(int)$row['id']] ?? [];
+            }
+            unset($row);
+        }
+
+        echo json_encode(['status' => 'success', 'data' => $rows]);
+        break;
+
+    case 'cashier_stats':
+        // Today's numbers for the logged-in cashier (voided sales excluded).
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(t.total), 0) AS todays_sales,
+                   COUNT(*) AS transactions,
+                   COALESCE((
+                       SELECT SUM(ti.quantity)
+                       FROM transaction_items ti
+                       JOIN transactions t2 ON ti.transaction_id = t2.id
+                       WHERE t2.cashier_id = :cashier_items
+                         AND DATE(t2.created_at) = CURDATE()
+                         AND t2.is_voided = 0
+                   ), 0) AS items_scanned
+            FROM transactions t
+            WHERE t.cashier_id = :cashier_sales
+              AND DATE(t.created_at) = CURDATE()
+              AND t.is_voided = 0
+        ");
+        $stmt->execute([
+            ':cashier_items' => $_SESSION['user_id'],
+            ':cashier_sales' => $_SESSION['user_id'],
+        ]);
+
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetch()]);
+        break;
+
+    case 'void_transaction':
+        $transactionId = filter_var($data['transaction_id'] ?? null, FILTER_VALIDATE_INT);
+        if ($transactionId === false || $transactionId < 1) {
+            json_error('Missing transaction_id');
+        }
+
+        $stmt = $pdo->prepare("SELECT id, cashier_id, is_voided, DATE(created_at) AS sale_date FROM transactions WHERE id = :id");
+        $stmt->execute([':id' => $transactionId]);
+        $txn = $stmt->fetch();
+
+        if (!$txn) {
+            json_error('Transaction not found', 404);
+        }
+        if ((int)$txn['is_voided'] === 1) {
+            json_error('Transaction is already voided');
+        }
+
+        // Policy: admin/manager can void any sale; a cashier may void only
+        // their own sale from TODAY (older ones need a manager).
+        if (($_SESSION['role'] ?? 'cashier') === 'cashier') {
+            if ((int)$txn['cashier_id'] !== (int)$_SESSION['user_id']) {
+                json_error('You can only void your own sales', 403);
+            }
+            if ($txn['sale_date'] !== date('Y-m-d')) {
+                json_error('Cashiers can only void sales from today. Ask a manager.', 403);
+            }
+        }
+
+        $pdo->beginTransaction();
+        try {
+            // The `AND is_voided = 0` makes this the race guard: if two people
+            // press Void at once, exactly one UPDATE matches a row.
+            $voidStmt = $pdo->prepare("UPDATE transactions SET is_voided = 1, voided_by = :user WHERE id = :id AND is_voided = 0");
+            $voidStmt->execute([':user' => $_SESSION['user_id'], ':id' => $transactionId]);
+            if ($voidStmt->rowCount() === 0) {
+                throw new RuntimeException('Transaction is already voided');
+            }
+
+            // Put the sold quantity back on the shelf.
+            $itemStmt = $pdo->prepare("SELECT product_id, quantity FROM transaction_items WHERE transaction_id = :id");
+            $itemStmt->execute([':id' => $transactionId]);
+
+            $restockStmt = $pdo->prepare("UPDATE products SET stock_qty = stock_qty + :qty WHERE id = :id");
+            foreach ($itemStmt->fetchAll() as $item) {
+                if ($item['product_id'] !== null) {
+                    $restockStmt->execute([
+                        ':qty' => $item['quantity'],
+                        ':id'  => $item['product_id'],
+                    ]);
+                }
+            }
+
+            $pdo->commit();
+            echo json_encode(['status' => 'success', 'message' => 'Transaction #' . $transactionId . ' voided']);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            json_error($e->getMessage());
         }
         break;
 
@@ -364,7 +634,7 @@ try{
     }
 }
 
-catch (Exception $e) {
+catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => 'Server error: ' . $e->getMessage()]);
 }
