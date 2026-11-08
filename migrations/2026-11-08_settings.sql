@@ -1,13 +1,8 @@
 -- ============================================================
 -- Migration: store simple store settings (currently the VAT rate)
 -- ============================================================
--- Apply with:  php console.php db:migrate
---
--- The settings table is a key/value store so later options (store name,
--- receipt header, etc.) do not need another ALTER TABLE.
---
--- setting_value for vat_rate is a PERCENT: 12.00 means 12%.
--- The API divides it by 100 before using it in tax_engine.php.
+-- Apply with: php console.php db:migrate
+-- vat_rate is a percent: 12.00 = 12%.
 -- ============================================================
 
 USE pos_accounting;

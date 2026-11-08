@@ -1,15 +1,10 @@
-// POS Accounting System - Login page client-side logic
-// POSTs to api/login.php (same origin, served by Apache at /pos/).
-// Reply contract (see NOTES.md): { success: true, role, full_name }
-//   -> role comes from the DB; route to pages/<role>-dashboard.php
-// The account-type dropdown in index.html is no longer required.
+// Login form: post to api/login.php, then redirect by role.
 
 document.getElementById('loginForm').addEventListener('submit', async function (e) {
   e.preventDefault();
 
   const usernameInput = document.getElementById('username');
   const passwordInput = document.getElementById('password');
-  const roleInput = document.getElementById('role'); // may be removed (task 4)
 
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
@@ -17,7 +12,6 @@ document.getElementById('loginForm').addEventListener('submit', async function (
   // Reset errors
   usernameInput.classList.remove('is-invalid');
   passwordInput.classList.remove('is-invalid');
-  if (roleInput) roleInput.classList.remove('is-invalid');
 
   // Validate
   let valid = true;

@@ -7,14 +7,14 @@ Thumbs.db
 vendor/
 .phpunit.result.cache
 
-# local environment only — never these
+# local environment only - never these
 .env
 *.local.php
 
 # local reference captures (feature checklist screenshot, not app assets)
 pos.png
 
-# personal handoff notes — kept locally, NOT shared on GitHub
+# personal handoff notes - kept locally, not shared on GitHub
 NOTES.md
 usernotes.md
 cookie.txt

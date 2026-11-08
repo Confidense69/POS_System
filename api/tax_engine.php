@@ -1,12 +1,6 @@
 <?php
-// Tax / discount engine.
-//
-// Pure functions only: no headers, no output, no database access. This file is
-// safe to require from an API endpoint, a report page, or a test script.
-//
-// Pricing convention: product prices are VAT-EXCLUSIVE. The 12% VAT is added
-// on top of the cart subtotal at checkout, so a ₱100.00 item becomes ₱112.00.
-// Senior/PWD sales are VAT-exempt and instead get 20% off the net subtotal.
+// VAT and discount calculations. Prices are VAT-exclusive; senior/PWD sales
+// are VAT-exempt with 20% off.
 
 if (!defined('DEFAULT_VAT_RATE')) {
     define('DEFAULT_VAT_RATE', 0.12);       // 12% Philippine VAT
@@ -16,14 +10,12 @@ if (!defined('DEFAULT_DISCOUNT_RATE')) {
 }
 
 /**
- * Compute the full VAT / discount breakdown for a cart.
+ * Compute the VAT / discount breakdown for a cart.
  *
  * @param array       $items        Each item: ['price' => float, 'quantity' => int]
  * @param float       $taxRate      VAT rate as a decimal (0.12 = 12%)
  * @param string|null $customerType 'regular', 'senior' or 'pwd'
  * @param string|null $idNumber     OSCA / PWD ID (required for senior & pwd)
- *
- * @throws InvalidArgumentException on invalid items or a missing discount ID.
  */
 function calculate_tax_and_totals(
     array $items,

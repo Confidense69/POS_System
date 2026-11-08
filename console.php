@@ -1,27 +1,17 @@
 <?php
 /**
- * console.php — tiny CLI entry point for the POS system.
- *
- * This is our "artisan": run commands from the repo root, e.g.
- *     php console.php list
- *     php console.php users:list
- *     php console.php db:migrate
- *     php console.php db:seed
- *
- * It REFUSES to run over the web (see the guard below), so commands like
- * db:seed can never be triggered by visiting a URL.
+ * CLI entry point. Commands: db:migrate, db:seed, users:list.
  */
 
-// --- guard: command line only (PHP_SAPI is 'cli' in a terminal, 'cli-server'
-//     or 'apache2handler' when a web server runs this file) ---
+// Command line only.
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     exit("This script can only be run from the command line.\n");
 }
 
-require __DIR__ . '/api/config.php';   // defines $pdo (header() calls are no-ops in CLI)
+require __DIR__ . '/api/config.php';   // defines $pdo
 
-// --- dispatch: $argv[0] is this script, $argv[1] is the first thing you typed ---
+// First argument is the command.
 $command = $argv[1] ?? 'list';
 
 switch ($command) {
@@ -51,11 +41,7 @@ switch ($command) {
 // ---------------------------- commands ----------------------------
 
 /**
- * Apply every unapplied file in migrations/ in filename order.
- *
- * Applied filenames are tracked in the `schema_migrations` table, so this can
- * be run safely on every pull. Each file is plain SQL: DDL + DML statements
- * separated by semicolons (no DELIMITER / stored procedures).
+ * Apply each unapplied file in migrations/ and record it in schema_migrations.
  */
 function dbMigrate(PDO $pdo): void
 {
@@ -116,9 +102,7 @@ function dbMigrate(PDO $pdo): void
 }
 
 /**
- * Split a .sql file into individual statements.
- * Simple on purpose: strips full-line `--` comments, then splits on `;`.
- * Good enough for our DDL/DML migrations; it does not understand DELIMITER.
+ * Split a .sql file on semicolons, ignoring full-line -- comments.
  */
 function splitSqlStatements(string $sql): array
 {

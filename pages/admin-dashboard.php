@@ -17,17 +17,6 @@ if (!in_array($role, $allowed_roles, true)){
   exit;
 }
 ?>
-<!-- ==========================================================================
-     NOTE: base markup is the groupmate's working admin dashboard.
-     Your OWN @M3 markers and intended structure are preserved below:
-       - session guard  -> done by the PHP block above
-       - echo role      -> sidebar .role-tag
-       - echo full_name -> navbar "Logged in as"
-       - logout link    -> ../api/logout.php
-       - extra sidebar links (Payroll / Reports / System Logs) kept as disabled TODOs
-     The merge mapping lived in groupmate/README.md; that folder was removed in commit bab03f8
-     (recover it from git history if ever needed).
-     ========================================================================== -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,7 +36,7 @@ if (!in_array($role, $allowed_roles, true)){
         <div class="brand-badge-sm">POS</div>
         <span>Accounting Sys</span>
       </div>
-      <span class="role-tag align-self-start mb-3"><?php echo htmlspecialchars($_SESSION['role'] ?? 'Admin'); ?><!-- @M3: echo role --></span>
+      <span class="role-tag align-self-start mb-3"><?php echo htmlspecialchars($_SESSION['role'] ?? 'Admin'); ?></span>
       
       <ul class="nav nav-pills flex-column gap-1" id="dashboardTabs" role="tablist">
         <li class="nav-item">
@@ -65,12 +54,11 @@ if (!in_array($role, $allowed_roles, true)){
         <li class="nav-item">
           <a class="nav-link" id="tab-pos" data-bs-toggle="pill" href="#sec-pos"><i class="bi bi-receipt"></i> POS &amp; Transactions</a>
         </li>
-        <!-- @M3/TODO: links from YOUR original shell -- not implemented yet -->
+        <!-- Payroll / Reports / System Logs are not implemented yet -->
         <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-cash-coin"></i> Payroll <span class="badge bg-secondary ms-1">soon</span></a></li>
         <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-graph-up"></i> Reports <span class="badge bg-secondary ms-1">soon</span></a></li>
         <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-journal-text"></i> System Logs <span class="badge bg-secondary ms-1">soon</span></a></li>
       </ul>
-      <!-- @M3: logout link -->
       <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
     </aside>
 
@@ -78,7 +66,7 @@ if (!in_array($role, $allowed_roles, true)){
     <main class="main-content flex-grow-1">
       <nav class="navbar navbar-custom px-4 py-3">
         <h1 class="h5 mb-0 fw-bold">Enterprise Management Dashboard</h1>
-        <span class="text-muted small">Logged in as <strong><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Admin'); ?><!-- @M3: echo full_name --></strong></span>
+        <span class="text-muted small">Logged in as <strong><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'Admin'); ?></strong></span>
       </nav>
 
       <div class="p-4 tab-content" id="dashboardTabsContent">
@@ -280,10 +268,8 @@ if (!in_array($role, $allowed_roles, true)){
     </div>
   </div>
 
-  <!-- Modal: Edit Supplier (M4 #2 step 4) -->
-  <!-- maxlength mirrors the REAL column widths (SHOW COLUMNS suppliers):
-       name 100, contact_person 100, email 100, phone 30, address 255.
-       This stops the silent truncation before it reaches the API. -->
+  <!-- Modal: Edit Supplier -->
+  <!-- maxlength values match the suppliers table columns -->
   <div class="modal fade" id="editSupplierModal" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -305,24 +291,6 @@ if (!in_array($role, $allowed_roles, true)){
       </div>
     </div>
   </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   <!-- Modal: receipt (sales history) -->
   <div class="modal fade" id="adminReceiptModal" tabindex="-1">

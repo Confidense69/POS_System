@@ -36,7 +36,7 @@ const receiptBody = document.getElementById('receiptBody');
 
 const API = '../api/pos_system_api.php';
 
-// Mirrors api/tax_engine.php. vatRate is replaced by the admin setting on load.
+// Defaults to 12%; loadSettings() replaces it with the admin setting.
 const DISCOUNT_RATE = 0.20;
 let vatRate = 0.12;
 
@@ -110,11 +110,7 @@ function isDiscountedSale() {
     return type === 'senior' || type === 'pwd';
 }
 
-/**
- * Mirror of api/tax_engine.php. Product prices are VAT-exclusive, so VAT is
- * added on top of the subtotal. Senior/PWD sales are VAT-exempt and get 20%
- * off the net subtotal instead.
- */
+// Mirrors api/tax_engine.php: VAT added on top, senior/PWD exempt with 20% off.
 function computeTotals() {
     const gross = round2(cart.reduce(function (sum, item) {
         return sum + Number(item.price) * Number(item.quantity);

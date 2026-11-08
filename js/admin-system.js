@@ -19,8 +19,7 @@ let inventoryCache = [];
 let suppliersCache = [];
 let transactionsCache = [];
 
-// Escape a value that came FROM THE DATABASE before it goes into innerHTML.
-// Without this, a supplier named  <img src=x onerror=alert(1)>  is parsed as HTML, not text.
+// Escape text before inserting it into HTML.
 function esc(value) {
     if (value === null || value === undefined) return "";
     return String(value)
@@ -31,9 +30,7 @@ function esc(value) {
         .replace(/'/g, "&#39;");
 }
 
-// POST JSON and parse the reply SAFELY.
-// php.ini has display_errors=On, so a single PHP warning can glue itself onto the front of
-// the JSON body and make res.json() throw. Reading the raw text shows us what really came back.
+// Parse the response as JSON.
 async function postJSON(url, payload) {
     const res = await fetch(url, {
         method: "POST",
@@ -187,14 +184,14 @@ async function loadInventory() {
 async function handleAddProduct(e) {
     e.preventDefault();
     const val = id => document.getElementById(id).value;
-    const num = v => (v === "" ? "" : Number(v));  // "" stays "" (contract: error), never Number("")=0
+    const num = v => (v === "" ? "" : Number(v));  // keep "" as "" so the API rejects it
 
     const productId = val("mProductId");
     const url = productId
         ? "../api/pos_system_api.php?action=update_product"
         : "../api/pos_system_api.php?action=add_product";
 
-    // update_product sends the full locked contract; add_product keeps its original keys
+    // update_product needs product_id; add_product does not.
     const payload = productId
         ? {
             product_id: Number(productId),
@@ -300,8 +297,7 @@ async function loadSuppliers() {
         `).join("");
 
         if (select) {
-            // Keep DEACTIVATED suppliers in the list (marked) on purpose: if they were filtered
-            // out, editing a product that points at one would silently blank its supplier_id.
+            // Keep deactivated suppliers so editing a product does not clear its supplier.
             select.innerHTML = `<option value="">Select Supplier</option>` +
                 result.data.map(s => `<option value="${s.id}">${esc(s.name)}${s.is_active == 1 ? '' : ' (Inactive)'}</option>`).join("");
         }
@@ -337,9 +333,8 @@ async function handleAddSupplier(e) {
     loadSuppliers();
 }
 
-// --- Edit Supplier (M4 #2 step 4) ---
-// CONTRACT (locked with the backend): POST update_supplier with
-// {supplier_id, name, contact_person, phone, email, address} -> {status:'success'|'error', message}
+// --- Edit Supplier ---
+// POST update_supplier with the supplier fields.
 function openEditSupplierModal(supplierId) {
     const s = suppliersCache.find(item => item.id === supplierId);
     if (!s) return;

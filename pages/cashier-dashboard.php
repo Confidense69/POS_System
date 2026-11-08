@@ -1,5 +1,5 @@
 <?php
-// @M3 session guard (implemented 10/16): must be the FIRST thing in the file, before <!DOCTYPE html>.
+// Require a logged-in cashier.
 session_start();
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../index.html');

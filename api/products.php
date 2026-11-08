@@ -2,7 +2,7 @@
 require 'config.php';
 session_start();
 
-// Same auth rule as pos_system_api.php: no session, no data.
+// Require a logged-in session.
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'message' => 'Not authenticated']);

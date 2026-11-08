@@ -1,13 +1,4 @@
-// Manager dashboard — live stats (M4 #1)
-//
-// Backend contract (agreed 10/19):
-//   GET ../api/pos_system_api.php?action=manager_stats
-//   -> { "status": "success", "data": {
-//          "todays_sales": "123.45", "low_stock": 1, "products": 4, "employees": 3,
-//          "recent_transactions": [
-//            { "id": 1, "created_at": "2026-10-19 15:18:21",
-//              "cashier": "Plaba", "payment_method": "cash", "total": "123.45" }
-//          ] } }
+// Manager dashboard: today's sales, stock counts and recent transactions.
 
 document.addEventListener("DOMContentLoaded", () => {
   loadManagerStats();
@@ -25,11 +16,9 @@ async function loadManagerStats() {
 
     const d = result.data;
 
-    // Money: SUM() is NULL when nothing sold today, and PDO often hands a
-    // decimal back as a string — `|| 0` + Number() normalise both cases.
+    // SUM() is NULL with no sales; PDO returns decimals as strings.
     setText("statSales", "₱" + Number(d.todays_sales || 0).toFixed(2));
 
-    // Counts: plain integers.
     setText("statLowStock", Number(d.low_stock || 0));
     setText("statProducts", Number(d.products || 0));
     setText("statEmployees", Number(d.employees || 0));
@@ -61,8 +50,7 @@ function renderRecentTransactions(rows) {
   `).join("");
 }
 
-// "2026-10-19 15:18:21" -> "Oct 19, 03:18 PM"
-// (the space is swapped for "T" so every browser parses it as local time)
+// Format a MySQL timestamp for display.
 function formatDate(value) {
   if (!value) return "—";
   const d = new Date(String(value).replace(" ", "T"));
@@ -76,7 +64,7 @@ function setText(id, value) {
   if (el) el.textContent = value;
 }
 
-// Stop user-supplied text (e.g. a full name) being read as HTML.
+// Escape text before inserting it into HTML.
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]

@@ -3,7 +3,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/tax_engine.php';
 session_start();
 
-// @M3-style guard: reject unauthenticated API calls (login.php must set $_SESSION['user_id'])
+// Reject requests without a logged-in session.
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(['status' => 'error', 'message' => 'Not authenticated']);
@@ -14,10 +14,7 @@ $action = $_GET['action'] ?? '';
 $data = json_decode(file_get_contents('php://input'), true) ?? [];
 $method = $_SERVER['REQUEST_METHOD'];
 
-/**
- * Stop the request with a JSON error response. Used for request validation
- * that happens before any database writes / transactions.
- */
+/** Send a JSON error response and stop. */
 function json_error(string $message, int $status = 400): void
 {
     http_response_code($status);
@@ -28,13 +25,7 @@ function json_error(string $message, int $status = 400): void
 /** VAT rates the admin is allowed to choose from (percent). */
 const ALLOWED_VAT_RATES = [12, 16, 20];
 
-/**
- * Read the store VAT rate as a DECIMAL RATE (12 -> 0.12).
- *
- * The value lives in the settings table as a percent. If the table has not
- * been migrated yet (or holds garbage), fall back to the old 12% default so
- * checkout keeps working instead of throwing a 500.
- */
+/** Read the VAT rate from settings, as a decimal (12 -> 0.12). */
 function current_vat_rate(PDO $pdo): float
 {
     try {
@@ -295,8 +286,7 @@ try{
             json_error('Cart is empty');
         }
 
-        // Never trust the client for money: the tax rate comes from the
-        // admin setting and prices are re-read from the products table below.
+        // Tax rate comes from settings; prices are re-read below.
         $taxRate       = current_vat_rate($pdo);
         $customerType  = strtolower(trim((string)($data['customer_type'] ?? 'regular')));
         $idNumber      = trim((string)($data['id_number'] ?? ''));
@@ -332,7 +322,7 @@ try{
             $requested[$productId] = ($requested[$productId] ?? 0) + $quantity;
         }
 
-        // Re-read authoritative prices / stock / active state from the database.
+        // Load prices, stock and status from the database.
         $ids          = array_keys($requested);
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $productStmt  = $pdo->prepare("SELECT id, name, price, stock_qty, is_active FROM products WHERE id IN ($placeholders)");
@@ -374,7 +364,7 @@ try{
 
         $pdo->beginTransaction();
         try {
-            // 1. Save Transaction (full VAT breakdown is stored for reports)
+            // Save the transaction with its VAT breakdown.
             $txnStmt = $pdo->prepare("INSERT INTO transactions (cashier_id, customer_type, discount_id, tax_rate, subtotal, vatable_sales, vat_exempt_sales, discount_amt, tax_amt, total, payment_method) VALUES (:cashier, :customer_type, :discount_id, :tax_rate, :subtotal, :vatable, :vat_exempt, :discount, :tax, :total, :payment_method)");
             $txnStmt->execute([
                 ':cashier'        => $cashierId,
@@ -391,7 +381,7 @@ try{
             ]);
             $txnId = $pdo->lastInsertId();
 
-            // 2. Save Items & Deduct Stock (guarded so stock can never go negative)
+            // Save items and deduct stock.
             $itemStmt  = $pdo->prepare("INSERT INTO transaction_items (transaction_id, product_id, quantity, unit_price, line_total) VALUES (:tx_id, :prod_id, :qty, :price, :line_total)");
             $stockStmt = $pdo->prepare("UPDATE products SET stock_qty = stock_qty - ? WHERE id = ? AND is_active = 1 AND stock_qty >= ?");
 
@@ -413,14 +403,12 @@ try{
 
             $pdo->commit();
 
-            // Read the timestamp back so the receipt shows DATABASE time
-            // (PHP and MySQL can be in different timezones on a laptop).
+            // Use the stored timestamp for the receipt.
             $createdStmt = $pdo->prepare("SELECT created_at FROM transactions WHERE id = :id");
             $createdStmt->execute([':id' => $txnId]);
             $createdAt = $createdStmt->fetchColumn();
 
-            // Everything the soft-copy receipt prints comes from here, so the
-            // browser never has to re-derive money from its own cart.
+            // Fields used by the receipt.
             echo json_encode([
                 'status'         => 'success',
                 'message'        => 'Checkout complete!',
@@ -491,7 +479,7 @@ try{
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
-        // Attach the line items in ONE extra query (not one per transaction).
+        // Attach line items in a single query.
         if ($rows) {
             $ids          = array_column($rows, 'id');
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
@@ -562,8 +550,7 @@ try{
             json_error('Transaction is already voided');
         }
 
-        // Policy: admin/manager can void any sale; a cashier may void only
-        // their own sale from TODAY (older ones need a manager).
+        // Admin/manager: any sale. Cashier: own sale from today.
         if (($_SESSION['role'] ?? 'cashier') === 'cashier') {
             if ((int)$txn['cashier_id'] !== (int)$_SESSION['user_id']) {
                 json_error('You can only void your own sales', 403);
@@ -575,15 +562,14 @@ try{
 
         $pdo->beginTransaction();
         try {
-            // The `AND is_voided = 0` makes this the race guard: if two people
-            // press Void at once, exactly one UPDATE matches a row.
+            // Guard against two voids at once.
             $voidStmt = $pdo->prepare("UPDATE transactions SET is_voided = 1, voided_by = :user WHERE id = :id AND is_voided = 0");
             $voidStmt->execute([':user' => $_SESSION['user_id'], ':id' => $transactionId]);
             if ($voidStmt->rowCount() === 0) {
                 throw new RuntimeException('Transaction is already voided');
             }
 
-            // Put the sold quantity back on the shelf.
+            // Restore stock.
             $itemStmt = $pdo->prepare("SELECT product_id, quantity FROM transaction_items WHERE transaction_id = :id");
             $itemStmt->execute([':id' => $transactionId]);
 
