@@ -2,18 +2,22 @@ document.addEventListener("DOMContentLoaded", () => {
     loadAccounts();
     loadInventory();
     loadSuppliers();
+    loadSettings();
+    loadTransactions();
 
     // Form Submissions
     document.getElementById("addProductForm")?.addEventListener("submit", handleAddProduct);
     document.getElementById("addSupplierForm")?.addEventListener("submit", handleAddSupplier);
     document.getElementById("editSupplierForm")?.addEventListener("submit", handleEditSupplier);
     document.getElementById("addAccountForm")?.addEventListener("submit", handleAddAccount);
-    document.getElementById("posCheckoutBtn")?.addEventListener("click", handlePOSCheckout);
+    document.getElementById("saveVatRateBtn")?.addEventListener("click", saveVatRate);
+    document.getElementById("refreshTransactionsBtn")?.addEventListener("click", loadTransactions);
+    document.getElementById("adminPrintReceiptBtn")?.addEventListener("click", () => window.print());
 });
 
-let posCart = [];
 let inventoryCache = [];
 let suppliersCache = [];
+let transactionsCache = [];
 
 // Escape a value that came FROM THE DATABASE before it goes into innerHTML.
 // Without this, a supplier named  <img src=x onerror=alert(1)>  is parsed as HTML, not text.
@@ -41,6 +45,49 @@ async function postJSON(url, payload) {
         return JSON.parse(text);
     } catch (err) {
         throw new Error("Server sent a non-JSON reply: " + text.slice(0, 200));
+    }
+}
+
+// 0. Store settings
+async function loadSettings() {
+    const select = document.getElementById("vatRateSelect");
+    if (!select) return;
+
+    try {
+        const res = await fetch("../api/pos_system_api.php?action=get_settings");
+        const result = await res.json();
+        if (result.status === "success" && result.data) {
+            select.value = String(result.data.vat_rate);
+        }
+    } catch (err) {
+        console.error("Could not load settings:", err);
+    }
+}
+
+async function saveVatRate() {
+    const select = document.getElementById("vatRateSelect");
+    const status = document.getElementById("vatRateStatus");
+    const btn = document.getElementById("saveVatRateBtn");
+    if (!select || !status || !btn) return;
+
+    btn.disabled = true;
+    try {
+        const result = await postJSON("../api/pos_system_api.php?action=update_settings", {
+            vat_rate: Number(select.value)
+        });
+
+        if (result.status === "success") {
+            status.textContent = "Saved. New sales use " + result.data.vat_rate + "% VAT.";
+            status.className = "small text-success mt-1";
+        } else {
+            status.textContent = result.message || "Could not save.";
+            status.className = "small text-danger mt-1";
+        }
+    } catch (err) {
+        status.textContent = err.message;
+        status.className = "small text-danger mt-1";
+    } finally {
+        btn.disabled = false;
     }
 }
 
@@ -127,7 +174,6 @@ async function loadInventory() {
                             ${p.is_active == 1 ? 'Deactivate' : 'Activate'}
                         </button>
                         <button class="btn btn-sm btn-outline-primary me-1" onclick="restockProduct(${p.id}, 10)">+10 Stock</button>
-                        ${p.is_active == 1 ? `<button class="btn btn-sm btn-success" onclick="addCartItem(${p.id})">+ POS</button>` : ""}
                     </td>
                 </tr>
             `;
@@ -338,73 +384,142 @@ async function handleEditSupplier(e) {
     }
 }
 
-// 4. POS / Sales Management
-function addCartItem(productId) {
-    const product = inventoryCache.find(p => p.id === productId);
-    if (!product) return;
-
-    const existing = posCart.find(item => item.product_id === productId);
-    if (existing) {
-        existing.quantity += 1;
-    } else {
-        posCart.push({ product_id: productId, name: product.name, price: parseFloat(product.price), quantity: 1 });
-    }
-    renderPOSCart();
+// 4. Sales / Transactions history
+function money(value) {
+    return Number(value || 0).toLocaleString("en-PH", {
+        style: "currency",
+        currency: "PHP"
+    });
 }
 
-function renderPOSCart() {
-    const tbody = document.getElementById("posCartBody");
+function formatDate(value) {
+    if (!value) return "—";
+    const d = new Date(String(value).replace(" ", "T"));
+    return isNaN(d)
+        ? String(value)
+        : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+async function loadTransactions() {
+    const tbody = document.getElementById("transactionsTableBody");
     if (!tbody) return;
 
-    if (posCart.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">Cart is empty</td></tr>`;
-        document.getElementById("posSubtotal").innerText = "₱0.00";
-        document.getElementById("posTax").innerText = "₱0.00";
-        document.getElementById("posTotal").innerText = "₱0.00";
-        return;
+    try {
+        const res = await fetch("../api/pos_system_api.php?action=get_transactions&limit=100");
+        const result = await res.json();
+
+        if (result.status !== "success" || !Array.isArray(result.data)) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Could not load transactions.</td></tr>`;
+            return;
+        }
+
+        transactionsCache = result.data;
+
+        if (transactionsCache.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No transactions yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = transactionsCache.map(t => {
+            const voided = Number(t.is_voided) === 1;
+            return `
+                <tr class="${voided ? "table-danger" : ""}">
+                    <td><code>#${t.id}</code></td>
+                    <td>${esc(formatDate(t.created_at))}</td>
+                    <td>${esc(t.cashier) || "—"}</td>
+                    <td>${esc(t.customer_type)}</td>
+                    <td><span class="badge bg-secondary">${esc(t.payment_method)}</span></td>
+                    <td class="text-end fw-bold">${money(t.total)}</td>
+                    <td>${voided
+                        ? `<span class="badge bg-danger">Voided</span>`
+                        : `<span class="badge bg-success">Completed</span>`}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary me-1" onclick="viewTransaction(${t.id})">View</button>
+                        ${voided ? "" : `<button class="btn btn-sm btn-outline-danger" onclick="voidTransaction(${t.id})">Void</button>`}
+                    </td>
+                </tr>
+            `;
+        }).join("");
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Could not load transactions.</td></tr>`;
+        console.error(err);
     }
-
-    let subtotal = 0;
-    tbody.innerHTML = posCart.map(item => {
-        const lineTotal = item.price * item.quantity;
-        subtotal += lineTotal;
-        return `
-            <tr>
-                <td>${esc(item.name)}</td>
-                <td class="text-center">${item.quantity}</td>
-                <td class="text-end">₱${item.price.toFixed(2)}</td>
-                <td class="text-end fw-bold">₱${lineTotal.toFixed(2)}</td>
-            </tr>
-        `;
-    }).join("");
-
-    const tax = subtotal * 0.08;
-    const total = subtotal + tax;
-
-    document.getElementById("posSubtotal").innerText = `₱${subtotal.toFixed(2)}`;
-    document.getElementById("posTax").innerText = `₱${tax.toFixed(2)}`;
-    document.getElementById("posTotal").innerText = `₱${total.toFixed(2)}`;
 }
 
-async function handlePOSCheckout() {
-    if (posCart.length === 0) {
-        alert("Please add items to cart before checkout!");
+function viewTransaction(transactionId) {
+    const txn = transactionsCache.find(t => Number(t.id) === Number(transactionId));
+    if (!txn) return;
+
+    const body = document.getElementById("adminReceiptBody");
+    if (!body) return;
+
+    const paymentLabels = { cash: "Cash", gcash: "GCash", maya: "Maya", maribank: "MariBank" };
+    const customerLabels = { regular: "Regular", senior: "Senior Citizen", pwd: "PWD" };
+    const voided = Number(txn.is_voided) === 1;
+    const items = txn.items || [];
+
+    body.innerHTML = `
+        <div class="receipt-paper">
+            <div class="text-center mb-2">
+                <div class="fw-bold">POS ACCOUNTING SYSTEM</div>
+                <div class="small text-muted">Soft copy receipt</div>
+                ${voided ? `<div class="badge bg-danger mt-2">VOIDED</div>` : ""}
+            </div>
+            <hr class="my-2">
+            <div class="small">
+                <div class="d-flex justify-content-between"><span>Txn</span><span>#${esc(txn.id)}</span></div>
+                <div class="d-flex justify-content-between"><span>Date</span><span>${esc(formatDate(txn.created_at))}</span></div>
+                <div class="d-flex justify-content-between"><span>Cashier</span><span>${esc(txn.cashier) || "—"}</span></div>
+                <div class="d-flex justify-content-between"><span>Payment</span><span>${esc(paymentLabels[txn.payment_method] || txn.payment_method)}</span></div>
+                <div class="d-flex justify-content-between"><span>Customer</span><span>${esc(customerLabels[txn.customer_type] || txn.customer_type)}</span></div>
+                ${txn.discount_id ? `<div class="d-flex justify-content-between"><span>ID No.</span><span>${esc(txn.discount_id)}</span></div>` : ""}
+                ${voided && txn.voided_by_name ? `<div class="d-flex justify-content-between"><span>Voided by</span><span>${esc(txn.voided_by_name)}</span></div>` : ""}
+            </div>
+            <hr class="my-2">
+            <div class="small">
+                ${items.map(item => `
+                    <div class="d-flex justify-content-between gap-2">
+                        <span>${esc(item.name)} x${item.quantity}</span>
+                        <span>${money(item.line_total)}</span>
+                    </div>
+                `).join("")}
+            </div>
+            <hr class="my-2">
+            <div class="small">
+                <div class="d-flex justify-content-between"><span>Subtotal</span><span>${money(txn.subtotal)}</span></div>
+                <div class="d-flex justify-content-between"><span>Discount</span><span>-${money(txn.discount_amt)}</span></div>
+                <div class="d-flex justify-content-between">
+                    <span>VAT ${Number(txn.vat_exempt_sales) > 0 ? "(exempt)" : "(" + Math.round(Number(txn.tax_rate) * 100) + "%)"}</span>
+                    <span>${money(txn.tax_amt)}</span>
+                </div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between fw-bold"><span>Total</span><span>${money(txn.total)}</span></div>
+            </div>
+            <div class="text-center small text-muted mt-3">Thank you for your purchase!</div>
+        </div>
+    `;
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("adminReceiptModal")).show();
+}
+
+async function voidTransaction(transactionId) {
+    if (!confirm("Void transaction #" + transactionId + "? Stock will be returned to inventory.")) {
         return;
     }
 
-    const res = await fetch("../api/pos_system_api.php?action=checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cart: posCart })
-    });
-    const result = await res.json();
+    try {
+        const result = await postJSON("../api/pos_system_api.php?action=void_transaction", {
+            transaction_id: transactionId
+        });
 
-    if (result.status === "success") {
-        alert("Transaction completed successfully!");
-        posCart = [];
-        renderPOSCart();
+        if (result.status !== "success") {
+            alert(result.message || "Could not void this transaction.");
+            return;
+        }
+
+        loadTransactions();
         loadInventory();
-    } else {
-        alert("Error: " + result.message);
+    } catch (err) {
+        alert(err.message || "Could not void this transaction.");
     }
 }

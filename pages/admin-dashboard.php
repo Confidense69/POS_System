@@ -86,14 +86,30 @@ if (!in_array($role, $allowed_roles, true)){
         <!-- OVERVIEW TAB -->
         <div class="tab-pane fade show active" id="sec-overview">
           <div class="row g-3 mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="card stat-card"><div class="card-body"><div class="text-muted small">Low Stock Items</div><div class="h5 mb-0 text-warning" id="statLowStock">0</div></div></div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="card stat-card"><div class="card-body"><div class="text-muted small">Total Products</div><div class="h5 mb-0" id="statProducts">0</div></div></div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="card stat-card"><div class="card-body"><div class="text-muted small">System Status</div><div class="h5 mb-0 text-success">Connected</div></div></div>
+            </div>
+            <div class="col-md-3">
+              <div class="card stat-card">
+                <div class="card-body">
+                  <div class="text-muted small mb-1">VAT Rate</div>
+                  <div class="d-flex gap-2">
+                    <select id="vatRateSelect" class="form-select form-select-sm">
+                      <option value="12">12%</option>
+                      <option value="16">16%</option>
+                      <option value="20">20%</option>
+                    </select>
+                    <button id="saveVatRateBtn" class="btn btn-primary btn-sm" type="button">Save</button>
+                  </div>
+                  <div class="small text-muted mt-1" id="vatRateStatus">Applied to every new sale.</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -160,30 +176,30 @@ if (!in_array($role, $allowed_roles, true)){
 
         <!-- 4. POS / TRANSACTIONS TAB -->
         <div class="tab-pane fade" id="sec-pos">
-          <div class="row g-3">
-            <div class="col-lg-8">
-              <div class="card shadow-sm">
-                <div class="card-header bg-white fw-semibold">POS Register</div>
-                <div class="card-body">
-                  <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                      <tr><th>Item</th><th class="text-center">Qty</th><th class="text-end">Price</th><th class="text-end">Line Total</th></tr>
-                    </thead>
-                    <tbody id="posCartBody"></tbody>
-                  </table>
-                </div>
-              </div>
+          <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+              <h5 class="mb-0 fw-bold"><i class="bi bi-receipt text-primary me-2"></i>Sales &amp; Transactions</h5>
+              <button class="btn btn-outline-secondary btn-sm" id="refreshTransactionsBtn" type="button">Refresh</button>
             </div>
-            <div class="col-lg-4">
-              <div class="card shadow-sm">
-                <div class="card-header bg-white fw-semibold">Payment Summary</div>
-                <div class="card-body">
-                  <div class="d-flex justify-content-between mb-2"><span class="text-muted">Subtotal</span><span id="posSubtotal">&#8369;0.00</span></div>
-                  <div class="d-flex justify-content-between mb-3"><span class="text-muted">Tax (8%)</span><span id="posTax">&#8369;0.00</span></div>
-                  <hr>
-                  <div class="d-flex justify-content-between mb-3"><span class="fw-bold">TOTAL</span><span class="fw-bold h5 text-primary mb-0" id="posTotal">&#8369;0.00</span></div>
-                  <button class="btn btn-success w-100 btn-lg" id="posCheckoutBtn">Checkout &amp; Deduct Stock</button>
-                </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Txn</th>
+                      <th>Date</th>
+                      <th>Cashier</th>
+                      <th>Customer</th>
+                      <th>Payment</th>
+                      <th class="text-end">Total</th>
+                      <th>Status</th>
+                      <th class="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="transactionsTableBody">
+                    <tr><td colspan="8" class="text-center text-muted py-4">No transactions yet.</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -307,6 +323,23 @@ if (!in_array($role, $allowed_roles, true)){
 
 
 
+
+  <!-- Modal: receipt (sales history) -->
+  <div class="modal fade" id="adminReceiptModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Soft Copy Receipt</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="adminReceiptBody"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="adminPrintReceiptBtn">Print</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../js/admin-system.js"></script>

@@ -133,3 +133,37 @@ body {
 .stat-card .icon i {
   line-height: 1;
 }
+
+/* ---------- RECEIPT ---------- */
+.receipt-paper {
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 18px;
+  background: #fff;
+  border: 1px dashed #adb5bd;
+  border-radius: 8px;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* Print only the receipt, not the dashboard behind the modal. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-paper,
+  .receipt-paper * {
+    visibility: visible;
+  }
+  .receipt-paper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    border: none;
+    border-radius: 0;
+  }
+  .modal-backdrop {
+    display: none !important;
+  }
+}
