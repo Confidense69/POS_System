@@ -98,26 +98,28 @@ M4+ — FEATURE WORK
                 match NOT NULL/400 contract). Verified: full live matrix (blank price 400-envelope,
                 bogus id not-found, 0s survive, expiry round-trip, trio NULL both endpoints,
                 no-change save OK, revert); 25/25 node modal tests.
-         [ ] 3. supplier deactivate/activate -> case 'toggle_supplier'.  AI: Status + Action columns.
-         [ ] 4. supplier edit -> case 'update_supplier'.  AI: Edit modal.
+         [x] 3. supplier deactivate/activate DONE 10/22 (36f40f9). AI: Status + Action columns.
+         [x] 4. supplier edit DONE 10/22-23 (8b2088c + f8eee76 + 63d3509). AI: Edit modal.
          DECISION: "delete" = SOFT delete (is_active = 0). A hard DELETE cascades restock_log away
          and NULLs transaction_items.product_id + products.supplier_id. Reversible > destructive.
 
 M4+ (scope from pos.png checklist — the sheet itself still says "Not Started" on all rows)
-- POS: keyboard-only cashiering; configurable tax (12/16/20%); PWD/Senior discounts w/ ID field;
-  QR display-only for GCash/Maya/MayaBank; soft-copy receipt UI
-- Inventory: restock logging (DONE via pos_system_api.php?action=restock_product);
-  low-stock + expiration alerts; supplier add/edit/deactivate (add/view done)
-- HR/Payroll: gross -> deductions -> net pay per employee per period
-- Reports/Dashboard: per-role dashboard summary; system logs (admin-only viewer);
-  sales/salary/losses reports + simple income statement (Revenue - Expenses)
-- UI/UX: responsive manager view
+- [x] POS (11/08): keyboard-only cashiering (F2 search, F3 remove, F4 pay, 1-4 payment);
+      barcode OR name search; configurable VAT 12/16/20 (admin setting); PWD/Senior 20%
+      discount + ID field + VAT exempt; QR display for GCash/Maya/MariBank; soft-copy
+      receipt modal with print. Sales history + void (stock restored) on cashier and admin.
+- [ ] Inventory: low-stock + expiration alerts (restock/add/edit/toggle already done)
+- [ ] HR/Payroll: gross -> deductions -> net pay per employee per period
+- [ ] Reports/Dashboard: system logs (admin-only viewer); sales/salary/losses reports +
+      simple income statement (Revenue - Expenses)
+- [ ] UI/UX: responsive manager view
 
 LEGACY TODOS (recovered 10/19 from groupmate/README.md before deleting that folder)
 - api/pos_system_api.php add_user: a BLANK password silently becomes 'password123' (line ~30). Fine for
   dev; decide whether to require a real password.
-- api/pos_system_api.php checkout: hardcodes payment_method = 'cash' (line ~128) and computes 8% tax
-  but never records a tax_rate. Wire up tax_rate + let the cashier choose the payment method.
+- [x] FIXED 10/25 (50970ba): checkout no longer hardcodes 'cash' or an 8% tax; it records
+  tax_rate, customer_type, discount_id, discount_amt, vatable_sales, vat_exempt_sales.
+  Follow-up 11/08: the rate now comes from the admin setting (settings.vat_rate).
 - Reply-key mismatch: login.php replies {success:...}; pos_system_api.php replies {status:...}. Unify later.
 - STALE NOTE (ignore): groupmate/README.md says pos_system_api.php has "no auth guard" — it DOES:
   returns 401 'Not authenticated' without a session (verified live 10/19).
@@ -127,3 +129,24 @@ LEGACY TODOS (recovered 10/19 from groupmate/README.md before deleting that fold
 - FALSE ALARM 10/19: two garbled file reads implied schema drift + a broken update_user_status
   action. grep + live SHOW COLUMNS proved database.sql and admin-system.js are IN SYNC.
   Verify with grep/shell before reporting a bug.
+
+DONE 11/08 — Transaction / Sales / POS closed out
+- SETTINGS: settings table (migrations/2026-11-08_settings.sql, also in database.sql).
+  vat_rate is a PERCENT ('12.00'); the API divides by 100. Admin-only update_settings.
+  Run `php console.php db:migrate` after pulling.
+- API: get_settings / update_settings / search_products / get_transactions /
+  cashier_stats / void_transaction. checkout now reads the VAT setting and returns
+  receipt data (items, DB created_at, cashier, payment method, summary).
+  api/products.php now requires a session and hides inactive products.
+- CASHIER: barcode OR name search with arrow keys; cash tendered + change;
+  post-checkout receipt modal + Print; My Transactions modal (view + void);
+  live today's cards. F2 search, F3 remove, F4 pay, 1-4 payment.
+- ADMIN: VAT selector on the overview; POS tab is now sales history with
+  view-receipt and void; the duplicate 8%-tax cart is gone.
+- VOID RULE: admin/manager any sale; cashier only own same-day. Void restores stock
+  and sets is_voided + voided_by. Nothing is deleted.
+- VERIFIED LIVE: 12/16% regular sales, senior/PWD discount + VAT exemption + ID required,
+  oversell rejected, cashier cannot void another cashier's sale (403),
+  cashier cannot change settings (403), void restores stock (60 -> 58 -> 60).
+- NOT DONE (on purpose): cash rounding, receipt store name/address, refund-to-original-
+  payment flow, void reason column, per-item discounts.
