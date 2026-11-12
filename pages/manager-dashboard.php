@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$allowed_roles = ['manager'];
+$allowed_roles = ['manager', 'admin'];
 $role = $_SESSION['role'];
 if (!in_array($role, $allowed_roles, true)){
   if (in_array($role, ['manager', 'cashier', 'admin'])){
@@ -55,6 +55,12 @@ if (!in_array($role, $allowed_roles, true)){
           <a class="nav-link" id="tab-reports" data-bs-toggle="pill" href="#sec-reports"><i class="bi bi-graph-up"></i> Reports</a>
         </li>
       </ul>
+
+      <div class="sidebar-label mt-3 mb-1">Other views</div>
+      <ul class="nav nav-pills flex-column gap-1">
+        <li class="nav-item"><a class="nav-link" href="cashier-dashboard.php"><i class="bi bi-cart3"></i> Cashier / POS</a></li>
+      </ul>
+
       <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
     </aside>
 

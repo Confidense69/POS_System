@@ -64,6 +64,13 @@ if (!in_array($role, $allowed_roles, true)){
           <a class="nav-link" id="tab-logs" data-bs-toggle="pill" href="#sec-logs"><i class="bi bi-journal-text"></i> System Logs</a>
         </li>
       </ul>
+
+      <div class="sidebar-label mt-3 mb-1">Other views</div>
+      <ul class="nav nav-pills flex-column gap-1">
+        <li class="nav-item"><a class="nav-link" href="manager-dashboard.php"><i class="bi bi-speedometer2"></i> Manager View</a></li>
+        <li class="nav-item"><a class="nav-link" href="cashier-dashboard.php"><i class="bi bi-cart3"></i> Cashier / POS</a></li>
+      </ul>
+
       <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
     </aside>
 

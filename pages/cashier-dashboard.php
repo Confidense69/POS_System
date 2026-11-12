@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$allowed_roles = ['cashier'];
+$allowed_roles = ['cashier', 'manager', 'admin'];
 $role = $_SESSION['role'];
 
 if (!in_array($role, $allowed_roles, true)){

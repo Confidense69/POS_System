@@ -111,6 +111,14 @@ body {
   border-radius: 20px;
 }
 
+.sidebar .sidebar-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.5);
+  padding-left: 16px;
+}
+
 .main-content {
   flex: 1;
   min-width: 0;
