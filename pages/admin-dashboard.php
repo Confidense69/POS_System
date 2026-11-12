@@ -57,8 +57,9 @@ if (!in_array($role, $allowed_roles, true)){
         <li class="nav-item">
           <a class="nav-link" id="tab-payroll" data-bs-toggle="pill" href="#sec-payroll"><i class="bi bi-cash-coin"></i> Payroll</a>
         </li>
-        <!-- Reports are not implemented yet -->
-        <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-graph-up"></i> Reports <span class="badge bg-secondary ms-1">soon</span></a></li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-reports" data-bs-toggle="pill" href="#sec-reports"><i class="bi bi-graph-up"></i> Reports</a>
+        </li>
         <li class="nav-item">
           <a class="nav-link" id="tab-logs" data-bs-toggle="pill" href="#sec-logs"><i class="bi bi-journal-text"></i> System Logs</a>
         </li>
@@ -318,6 +319,84 @@ if (!in_array($role, $allowed_roles, true)){
                   </thead>
                   <tbody id="logsTableBody"></tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. REPORTS TAB -->
+        <div class="tab-pane fade" id="sec-reports">
+          <div class="card shadow-sm mb-3">
+            <div class="card-body">
+              <form id="reportFilterForm" class="row g-2 align-items-end">
+                <div class="col-auto">
+                  <label class="form-label mb-1">From</label>
+                  <input type="date" id="reportFrom" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-auto">
+                  <label class="form-label mb-1">To</label>
+                  <input type="date" id="reportTo" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-auto">
+                  <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <div class="card stat-card"><div class="card-body"><div class="text-muted small">Revenue</div><div class="h5 mb-0 text-success" id="repRevenue">&#8369;0.00</div></div></div>
+            </div>
+            <div class="col-md-3">
+              <div class="card stat-card"><div class="card-body"><div class="text-muted small">Discounts</div><div class="h5 mb-0 text-warning" id="repDiscounts">&#8369;0.00</div></div></div>
+            </div>
+            <div class="col-md-3">
+              <div class="card stat-card"><div class="card-body"><div class="text-muted small">Voided Losses</div><div class="h5 mb-0 text-danger" id="repLosses">&#8369;0.00</div></div></div>
+            </div>
+            <div class="col-md-3">
+              <div class="card stat-card"><div class="card-body"><div class="text-muted small">Salaries</div><div class="h5 mb-0" id="repSalaries">&#8369;0.00</div></div></div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-lg-7">
+              <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">Sales by Day</div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                      <thead class="table-light">
+                        <tr><th>Date</th><th class="text-end">Transactions</th><th class="text-end">Revenue</th></tr>
+                      </thead>
+                      <tbody id="reportDailyBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-5">
+              <div class="card shadow-sm mb-3">
+                <div class="card-header bg-white fw-semibold">Income Statement</div>
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-2"><span>Revenue</span><strong id="isRevenue">&#8369;0.00</strong></div>
+                  <div class="d-flex justify-content-between mb-2"><span>Salaries</span><strong id="isExpenses">&#8369;0.00</strong></div>
+                  <hr>
+                  <div class="d-flex justify-content-between"><span class="fw-bold">Net Income</span><strong id="isNet">&#8369;0.00</strong></div>
+                </div>
+              </div>
+
+              <div class="card shadow-sm">
+                <div class="card-header bg-white fw-semibold">Sales by Customer Type</div>
+                <div class="card-body p-0">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr><th>Type</th><th class="text-end">Sales</th><th class="text-end">Discounts</th></tr>
+                    </thead>
+                    <tbody id="reportCustomerBody"></tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

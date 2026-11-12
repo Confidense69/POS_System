@@ -756,6 +756,85 @@ try{
         echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
         break;
 
+    case 'get_reports':
+        $from = $_GET['from'] ?? '';
+        $to = $_GET['to'] ?? '';
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) {
+            $from = date('Y-m-01');
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+            $to = date('Y-m-d');
+        }
+        if ($from > $to) {
+            json_error('The start date must be before the end date');
+        }
+
+        $salesStmt = $pdo->prepare("
+            SELECT COALESCE(SUM(total), 0) AS revenue,
+                   COUNT(*) AS transactions,
+                   COALESCE(SUM(discount_amt), 0) AS discounts
+            FROM transactions
+            WHERE is_voided = 0 AND DATE(created_at) BETWEEN :from AND :to
+        ");
+        $salesStmt->execute([':from' => $from, ':to' => $to]);
+        $sales = $salesStmt->fetch();
+
+        $voidStmt = $pdo->prepare("
+            SELECT COALESCE(SUM(total), 0) AS losses, COUNT(*) AS voided
+            FROM transactions
+            WHERE is_voided = 1 AND DATE(created_at) BETWEEN :from AND :to
+        ");
+        $voidStmt->execute([':from' => $from, ':to' => $to]);
+        $voids = $voidStmt->fetch();
+
+        $salaryStmt = $pdo->prepare("
+            SELECT COALESCE(SUM(net_pay), 0) AS salaries
+            FROM salaries
+            WHERE period_end BETWEEN :from AND :to
+        ");
+        $salaryStmt->execute([':from' => $from, ':to' => $to]);
+        $salaries = (float)$salaryStmt->fetchColumn();
+
+        $dailyStmt = $pdo->prepare("
+            SELECT DATE(created_at) AS day, COUNT(*) AS transactions, COALESCE(SUM(total), 0) AS revenue
+            FROM transactions
+            WHERE is_voided = 0 AND DATE(created_at) BETWEEN :from AND :to
+            GROUP BY DATE(created_at)
+            ORDER BY day DESC
+        ");
+        $dailyStmt->execute([':from' => $from, ':to' => $to]);
+
+        $customerStmt = $pdo->prepare("
+            SELECT customer_type, COUNT(*) AS transactions, COALESCE(SUM(discount_amt), 0) AS discounts
+            FROM transactions
+            WHERE is_voided = 0 AND DATE(created_at) BETWEEN :from AND :to
+            GROUP BY customer_type
+            ORDER BY customer_type ASC
+        ");
+        $customerStmt->execute([':from' => $from, ':to' => $to]);
+
+        $revenue = (float)$sales['revenue'];
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => [
+                'range' => ['from' => $from, 'to' => $to],
+                'summary' => [
+                    'revenue'    => $revenue,
+                    'transactions' => (int)$sales['transactions'],
+                    'discounts'  => (float)$sales['discounts'],
+                    'losses'     => (float)$voids['losses'],
+                    'voided'     => (int)$voids['voided'],
+                    'salaries'   => $salaries,
+                    'net_income' => round($revenue - $salaries, 2)
+                ],
+                'daily' => $dailyStmt->fetchAll(),
+                'by_customer' => $customerStmt->fetchAll()
+            ]
+        ]);
+        break;
+
     case 'manager_stats':
         $stats = $pdo->query("SELECT 
         (SELECT COALESCE(SUM(total), 0) FROM transactions WHERE DATE(created_at) = CURDATE() AND is_voided = 0) AS todays_sales,

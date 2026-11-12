@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadEmployees();
     loadPayroll();
     loadSystemLogs();
+    initReports();
 
     // Form Submissions
     document.getElementById("addProductForm")?.addEventListener("submit", handleAddProduct);
@@ -20,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("payrollForm")?.addEventListener("submit", handleRunPayroll);
     document.getElementById("refreshPayrollBtn")?.addEventListener("click", loadPayroll);
     document.getElementById("refreshLogsBtn")?.addEventListener("click", loadSystemLogs);
+    document.getElementById("reportFilterForm")?.addEventListener("submit", handleReportFilter);
     document.getElementById("payEmployee")?.addEventListener("change", updatePayrollPreview);
     document.getElementById("payHours")?.addEventListener("input", updatePayrollPreview);
     document.getElementById("payDeductions")?.addEventListener("input", updatePayrollPreview);
@@ -622,6 +624,78 @@ async function loadSystemLogs() {
             : '<tr><td colspan="4" class="text-center text-muted py-4">No activity yet.</td></tr>';
     } catch (err) {
         console.error("Could not load logs:", err);
+    }
+}
+
+// 7. Reports
+function isoDate(date) {
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function initReports() {
+    const from = document.getElementById("reportFrom");
+    const to = document.getElementById("reportTo");
+    if (!from || !to) return;
+
+    const now = new Date();
+    from.value = isoDate(new Date(now.getFullYear(), now.getMonth(), 1));
+    to.value = isoDate(now);
+    loadReports();
+}
+
+function handleReportFilter(e) {
+    e.preventDefault();
+    loadReports();
+}
+
+async function loadReports() {
+    const from = document.getElementById("reportFrom").value;
+    const to = document.getElementById("reportTo").value;
+    const dailyBody = document.getElementById("reportDailyBody");
+    const customerBody = document.getElementById("reportCustomerBody");
+    if (!dailyBody || !customerBody) return;
+
+    try {
+        const url = `../api/pos_system_api.php?action=get_reports&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+        const res = await fetch(url);
+        const result = await res.json();
+
+        if (result.status !== "success") {
+            dailyBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-4">${esc(result.message || "Could not load reports.")}</td></tr>`;
+            return;
+        }
+
+        const summary = result.data.summary;
+        document.getElementById("repRevenue").innerText = money(summary.revenue);
+        document.getElementById("repDiscounts").innerText = money(summary.discounts);
+        document.getElementById("repLosses").innerText = money(summary.losses);
+        document.getElementById("repSalaries").innerText = money(summary.salaries);
+        document.getElementById("isRevenue").innerText = money(summary.revenue);
+        document.getElementById("isExpenses").innerText = money(summary.salaries);
+        document.getElementById("isNet").innerText = money(summary.net_income);
+
+        dailyBody.innerHTML = result.data.daily.length
+            ? result.data.daily.map(d => `
+                <tr>
+                    <td>${esc(d.day)}</td>
+                    <td class="text-end">${d.transactions}</td>
+                    <td class="text-end">${money(d.revenue)}</td>
+                </tr>`).join("")
+            : '<tr><td colspan="3" class="text-center text-muted py-4">No sales in this range.</td></tr>';
+
+        const labels = { regular: "Regular", senior: "Senior Citizen", pwd: "PWD" };
+        customerBody.innerHTML = result.data.by_customer.length
+            ? result.data.by_customer.map(c => `
+                <tr>
+                    <td>${esc(labels[c.customer_type] || c.customer_type)}</td>
+                    <td class="text-end">${c.transactions}</td>
+                    <td class="text-end">${money(c.discounts)}</td>
+                </tr>`).join("")
+            : '<tr><td colspan="3" class="text-center text-muted py-4">No sales in this range.</td></tr>';
+    } catch (err) {
+        console.error("Could not load reports:", err);
     }
 }
 
