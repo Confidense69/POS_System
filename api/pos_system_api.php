@@ -121,6 +121,30 @@ try{
         echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
         break;
 
+    case 'get_inventory_alerts':
+        $lowStock = $pdo->query("
+            SELECT id, name, stock_qty, reorder_level
+            FROM products
+            WHERE is_active = 1 AND stock_qty <= reorder_level
+            ORDER BY stock_qty ASC, name ASC
+        ")->fetchAll();
+
+        $expiring = $pdo->query("
+            SELECT id, name, expiration_date,
+                   DATEDIFF(expiration_date, CURDATE()) AS days_left
+            FROM products
+            WHERE is_active = 1
+              AND expiration_date IS NOT NULL
+              AND expiration_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+            ORDER BY expiration_date ASC
+        ")->fetchAll();
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => ['low_stock' => $lowStock, 'expiring' => $expiring]
+        ]);
+        break;
+
     case 'search_products':
         // Barcode-or-name lookup for the cashier register.
         $q = trim((string)($_GET['q'] ?? ''));

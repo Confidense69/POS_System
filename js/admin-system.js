@@ -30,6 +30,25 @@ function esc(value) {
         .replace(/'/g, "&#39;");
 }
 
+// Whole days from today until a YYYY-MM-DD date.
+function daysUntil(dateStr) {
+    const parts = String(dateStr).split("-").map(Number);
+    const target = new Date(parts[0], parts[1] - 1, parts[2]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((target - today) / 86400000);
+}
+
+// Badge for a product's expiration date.
+function expiryBadge(dateStr) {
+    if (!dateStr) return '<span class="text-muted">&mdash;</span>';
+
+    const left = daysUntil(dateStr);
+    if (left < 0) return '<span class="badge bg-danger">Expired</span>';
+    if (left <= 30) return `<span class="badge bg-warning text-dark">${left} day${left === 1 ? "" : "s"} left</span>`;
+    return `<span class="text-muted">${esc(dateStr)}</span>`;
+}
+
 // Parse the response as JSON.
 async function postJSON(url, payload) {
     const res = await fetch(url, {
@@ -164,6 +183,7 @@ async function loadInventory() {
                             ${p.stock_qty} units
                         </span>
                     </td>
+                    <td>${expiryBadge(p.expiration_date)}</td>
                     <td>
                         <span class="badge ${p.is_active == 1 ? 'bg-success' : 'bg-danger'} me-1">${p.is_active == 1 ? 'Active' : 'Inactive'}</span>
                         <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEditModal(${p.id})">Edit</button>
@@ -178,6 +198,42 @@ async function loadInventory() {
 
         document.getElementById("statLowStock").innerText = lowStockCount;
         document.getElementById("statProducts").innerText = result.data.length;
+        loadInventoryAlerts();
+    }
+}
+
+async function loadInventoryAlerts() {
+    const lowBody = document.getElementById("lowStockBody");
+    const expBody = document.getElementById("expiringBody");
+    if (!lowBody || !expBody) return;
+
+    try {
+        const res = await fetch("../api/pos_system_api.php?action=get_inventory_alerts");
+        const result = await res.json();
+        if (result.status !== "success") return;
+
+        const lowStock = result.data.low_stock || [];
+        const expiring = result.data.expiring || [];
+
+        lowBody.innerHTML = lowStock.length
+            ? lowStock.map(p => `
+                <tr>
+                    <td class="fw-bold">${esc(p.name)}</td>
+                    <td class="text-end">${p.stock_qty}</td>
+                    <td class="text-end text-muted">${p.reorder_level}</td>
+                </tr>`).join("")
+            : '<tr><td colspan="3" class="text-center text-muted py-3">No low stock items.</td></tr>';
+
+        expBody.innerHTML = expiring.length
+            ? expiring.map(p => `
+                <tr>
+                    <td class="fw-bold">${esc(p.name)}</td>
+                    <td>${esc(p.expiration_date)}</td>
+                    <td class="text-end">${expiryBadge(p.expiration_date)}</td>
+                </tr>`).join("")
+            : '<tr><td colspan="3" class="text-center text-muted py-3">Nothing expiring soon.</td></tr>';
+    } catch (err) {
+        console.error("Could not load inventory alerts:", err);
     }
 }
 

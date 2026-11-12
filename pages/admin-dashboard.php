@@ -100,6 +100,43 @@ if (!in_array($role, $allowed_roles, true)){
               </div>
             </div>
           </div>
+
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">
+                  <i class="bi bi-exclamation-triangle text-warning me-2"></i>Low Stock
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                      <thead class="table-light">
+                        <tr><th>Product</th><th class="text-end">Stock</th><th class="text-end">Reorder At</th></tr>
+                      </thead>
+                      <tbody id="lowStockBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">
+                  <i class="bi bi-calendar-x text-danger me-2"></i>Expiring Within 30 Days
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                      <thead class="table-light">
+                        <tr><th>Product</th><th>Expiry</th><th class="text-end">Days Left</th></tr>
+                      </thead>
+                      <tbody id="expiringBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 1. ACCOUNTS TAB -->
@@ -133,7 +170,7 @@ if (!in_array($role, $allowed_roles, true)){
               <div class="table-responsive">
                 <table class="table table-hover mb-0">
                   <thead class="table-light">
-                    <tr><th>SKU</th><th>Product Name</th><th>Supplier</th><th>Price</th><th>Stock</th><th>Action</th></tr>
+                    <tr><th>SKU</th><th>Product Name</th><th>Supplier</th><th>Price</th><th>Stock</th><th>Expiry</th><th>Action</th></tr>
                   </thead>
                   <tbody id="inventoryTableBody"></tbody>
                 </table>
