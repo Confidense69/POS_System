@@ -617,6 +617,103 @@ try{
         }
         break;
 
+    // ----------------------------------------------------
+    // 5. PAYROLL
+    // ----------------------------------------------------
+    case 'get_employees':
+        $stmt = $pdo->query("
+            SELECT * FROM employees
+            WHERE is_active = 1
+            ORDER BY last_name ASC, first_name ASC
+        ");
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+        break;
+
+    case 'save_employee':
+        if (empty($data['first_name']) || empty($data['last_name']) || !isset($data['hourly_rate']) || $data['hourly_rate'] === '') {
+            echo json_encode(['status' => 'error', 'message' => 'Missing required fields: first_name, last_name, hourly_rate']);
+            break;
+        }
+
+        $params = [
+            ':first' => $data['first_name'],
+            ':last'  => $data['last_name'],
+            ':role'  => (empty($data['role']) ? null : $data['role']),
+            ':rate'  => $data['hourly_rate']
+        ];
+
+        if (!empty($data['employee_id'])) {
+            $params[':id'] = $data['employee_id'];
+            $stmt = $pdo->prepare("UPDATE employees SET first_name = :first, last_name = :last, role = :role, hourly_rate = :rate WHERE id = :id");
+            $stmt->execute($params);
+            $message = 'Employee updated successfully';
+        } else {
+            $stmt = $pdo->prepare("INSERT INTO employees (first_name, last_name, role, hourly_rate) VALUES (:first, :last, :role, :rate)");
+            $stmt->execute($params);
+            $message = 'Employee added successfully';
+        }
+
+        echo json_encode(['status' => 'success', 'message' => $message]);
+        break;
+
+    case 'get_payroll':
+        $stmt = $pdo->query("
+            SELECT s.*, CONCAT(e.first_name, ' ', e.last_name) AS employee
+            FROM salaries s
+            JOIN employees e ON e.id = s.employee_id
+            ORDER BY s.period_end DESC, s.id DESC
+        ");
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
+        break;
+
+    case 'run_payroll':
+        $employeeId = (int)($data['employee_id'] ?? 0);
+        $start = $data['period_start'] ?? '';
+        $end = $data['period_end'] ?? '';
+        $hours = (float)($data['hours_worked'] ?? 0);
+        $deductions = (float)($data['deductions'] ?? 0);
+
+        if (!$employeeId || !$start || !$end || $hours <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Employee, period and hours worked are required']);
+            break;
+        }
+        if ($end < $start) {
+            echo json_encode(['status' => 'error', 'message' => 'Period end must be after the start date']);
+            break;
+        }
+
+        $emp = $pdo->prepare("SELECT hourly_rate FROM employees WHERE id = :id");
+        $emp->execute([':id' => $employeeId]);
+        $rate = $emp->fetchColumn();
+        if ($rate === false) {
+            echo json_encode(['status' => 'error', 'message' => 'Employee not found']);
+            break;
+        }
+
+        $gross = round((float)$rate * $hours, 2);
+        $net = round($gross - $deductions, 2);
+
+        $stmt = $pdo->prepare("
+            INSERT INTO salaries (employee_id, period_start, period_end, hours_worked, gross_pay, deductions, net_pay, paid_at)
+            VALUES (:emp, :start, :end, :hours, :gross, :deductions, :net, NOW())
+        ");
+        $stmt->execute([
+            ':emp'        => $employeeId,
+            ':start'      => $start,
+            ':end'        => $end,
+            ':hours'      => $hours,
+            ':gross'      => $gross,
+            ':deductions' => $deductions,
+            ':net'        => $net
+        ]);
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Payroll saved',
+            'data' => ['gross_pay' => $gross, 'deductions' => $deductions, 'net_pay' => $net]
+        ]);
+        break;
+
     case 'manager_stats':
         $stats = $pdo->query("SELECT 
         (SELECT COALESCE(SUM(total), 0) FROM transactions WHERE DATE(created_at) = CURDATE() AND is_voided = 0) AS todays_sales,

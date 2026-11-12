@@ -54,8 +54,10 @@ if (!in_array($role, $allowed_roles, true)){
         <li class="nav-item">
           <a class="nav-link" id="tab-pos" data-bs-toggle="pill" href="#sec-pos"><i class="bi bi-receipt"></i> POS &amp; Transactions</a>
         </li>
-        <!-- Payroll / Reports / System Logs are not implemented yet -->
-        <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-cash-coin"></i> Payroll <span class="badge bg-secondary ms-1">soon</span></a></li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-payroll" data-bs-toggle="pill" href="#sec-payroll"><i class="bi bi-cash-coin"></i> Payroll</a>
+        </li>
+        <!-- Reports / System Logs are not implemented yet -->
         <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-graph-up"></i> Reports <span class="badge bg-secondary ms-1">soon</span></a></li>
         <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-journal-text"></i> System Logs <span class="badge bg-secondary ms-1">soon</span></a></li>
       </ul>
@@ -230,6 +232,75 @@ if (!in_array($role, $allowed_roles, true)){
           </div>
         </div>
 
+        <!-- 5. PAYROLL TAB -->
+        <div class="tab-pane fade" id="sec-payroll">
+          <div class="row g-3">
+            <div class="col-lg-7">
+              <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                  <h5 class="mb-0 fw-bold"><i class="bi bi-people text-primary me-2"></i>Employees</h5>
+                  <button class="btn btn-primary btn-sm" type="button" onclick="resetEmployeeModal()" data-bs-toggle="modal" data-bs-target="#employeeModal">+ Add Employee</button>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                      <thead class="table-light">
+                        <tr><th>Name</th><th>Role</th><th class="text-end">Hourly Rate</th><th class="text-end">Action</th></tr>
+                      </thead>
+                      <tbody id="employeesTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-5">
+              <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-cash-coin text-success me-2"></i>Run Payroll</div>
+                <div class="card-body">
+                  <form id="payrollForm">
+                    <div class="mb-2">
+                      <label class="form-label">Employee</label>
+                      <select id="payEmployee" class="form-select" required></select>
+                    </div>
+                    <div class="row g-2 mb-2">
+                      <div class="col-6"><label class="form-label">Period Start</label><input type="date" id="payStart" class="form-control" required></div>
+                      <div class="col-6"><label class="form-label">Period End</label><input type="date" id="payEnd" class="form-control" required></div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                      <div class="col-6"><label class="form-label">Hours Worked</label><input type="number" step="0.25" min="0" id="payHours" class="form-control" required></div>
+                      <div class="col-6"><label class="form-label">Deductions (&#8369;)</label><input type="number" step="0.01" min="0" id="payDeductions" class="form-control" value="0"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mb-3">
+                      <span>Gross: <strong id="payGross">&#8369;0.00</strong></span>
+                      <span>Net: <strong id="payNet">&#8369;0.00</strong></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Save Payroll</button>
+                    <div class="small mt-2" id="payrollStatus"></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card shadow-sm mt-3">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+              <h5 class="mb-0 fw-bold"><i class="bi bi-journal-text text-primary me-2"></i>Payroll History</h5>
+              <button class="btn btn-outline-secondary btn-sm" id="refreshPayrollBtn" type="button">Refresh</button>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>Employee</th><th>Period</th><th class="text-end">Hours</th><th class="text-end">Gross</th><th class="text-end">Deductions</th><th class="text-end">Net Pay</th><th>Paid</th></tr>
+                  </thead>
+                  <tbody id="payrollTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
@@ -324,6 +395,29 @@ if (!in_array($role, $allowed_roles, true)){
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary" id="saveSupplierBtn">Save Changes</button>
           </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add / Edit Employee -->
+  <div class="modal fade" id="employeeModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="employeeForm">
+          <div class="modal-header"><h5 class="modal-title" id="employeeTitle">Add Employee</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <input type="hidden" id="empId" value="">
+            <div class="row g-2 mb-2">
+              <div class="col-6"><label class="form-label">First Name</label><input type="text" id="empFirst" class="form-control" required></div>
+              <div class="col-6"><label class="form-label">Last Name</label><input type="text" id="empLast" class="form-control" required></div>
+            </div>
+            <div class="row g-2 mb-2">
+              <div class="col-6"><label class="form-label">Role</label><input type="text" id="empRole" class="form-control" placeholder="e.g. Cashier"></div>
+              <div class="col-6"><label class="form-label">Hourly Rate (&#8369;)</label><input type="number" step="0.01" min="0" id="empRate" class="form-control" required></div>
+            </div>
+          </div>
+          <div class="modal-footer"><button type="submit" class="btn btn-primary">Save Employee</button></div>
         </form>
       </div>
     </div>

@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadSuppliers();
     loadSettings();
     loadTransactions();
+    loadEmployees();
+    loadPayroll();
 
     // Form Submissions
     document.getElementById("addProductForm")?.addEventListener("submit", handleAddProduct);
@@ -13,11 +15,18 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("saveVatRateBtn")?.addEventListener("click", saveVatRate);
     document.getElementById("refreshTransactionsBtn")?.addEventListener("click", loadTransactions);
     document.getElementById("adminPrintReceiptBtn")?.addEventListener("click", () => window.print());
+    document.getElementById("employeeForm")?.addEventListener("submit", handleSaveEmployee);
+    document.getElementById("payrollForm")?.addEventListener("submit", handleRunPayroll);
+    document.getElementById("refreshPayrollBtn")?.addEventListener("click", loadPayroll);
+    document.getElementById("payEmployee")?.addEventListener("change", updatePayrollPreview);
+    document.getElementById("payHours")?.addEventListener("input", updatePayrollPreview);
+    document.getElementById("payDeductions")?.addEventListener("input", updatePayrollPreview);
 });
 
 let inventoryCache = [];
 let suppliersCache = [];
 let transactionsCache = [];
+let employeesCache = [];
 
 // Escape text before inserting it into HTML.
 function esc(value) {
@@ -432,6 +441,158 @@ async function handleEditSupplier(e) {
         }
     } catch (err) {
         alert(err.message);
+    }
+}
+
+// 5. Payroll
+async function loadEmployees() {
+    const tbody = document.getElementById("employeesTableBody");
+    const select = document.getElementById("payEmployee");
+    if (!tbody) return;
+
+    try {
+        const res = await fetch("../api/pos_system_api.php?action=get_employees");
+        const result = await res.json();
+        if (result.status !== "success") return;
+
+        employeesCache = result.data;
+
+        tbody.innerHTML = employeesCache.length
+            ? employeesCache.map(e => `
+                <tr>
+                    <td class="fw-bold">${esc(e.first_name)} ${esc(e.last_name)}</td>
+                    <td>${esc(e.role) || "&mdash;"}</td>
+                    <td class="text-end">${money(e.hourly_rate)}</td>
+                    <td class="text-end"><button class="btn btn-sm btn-outline-secondary" onclick="openEmployeeModal(${e.id})">Edit</button></td>
+                </tr>`).join("")
+            : '<tr><td colspan="4" class="text-center text-muted py-4">No employees yet.</td></tr>';
+
+        if (select) {
+            select.innerHTML = '<option value="">Select Employee</option>' +
+                employeesCache.map(e => `<option value="${e.id}">${esc(e.first_name)} ${esc(e.last_name)}</option>`).join("");
+        }
+
+        updatePayrollPreview();
+    } catch (err) {
+        console.error("Could not load employees:", err);
+    }
+}
+
+function openEmployeeModal(employeeId) {
+    const employee = employeesCache.find(item => Number(item.id) === Number(employeeId));
+    if (!employee) return;
+
+    document.getElementById("empId").value = employee.id;
+    document.getElementById("employeeTitle").innerText = "Edit Employee";
+    document.getElementById("empFirst").value = employee.first_name ?? "";
+    document.getElementById("empLast").value = employee.last_name ?? "";
+    document.getElementById("empRole").value = employee.role ?? "";
+    document.getElementById("empRate").value = employee.hourly_rate ?? "";
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("employeeModal")).show();
+}
+
+function resetEmployeeModal() {
+    document.getElementById("empId").value = "";
+    document.getElementById("employeeTitle").innerText = "Add Employee";
+    document.getElementById("employeeForm").reset();
+}
+
+async function handleSaveEmployee(e) {
+    e.preventDefault();
+    const val = id => document.getElementById(id).value.trim();
+
+    const payload = {
+        employee_id: val("empId") ? Number(val("empId")) : null,
+        first_name: val("empFirst"),
+        last_name: val("empLast"),
+        role: val("empRole"),
+        hourly_rate: val("empRate")
+    };
+
+    try {
+        const result = await postJSON("../api/pos_system_api.php?action=save_employee", payload);
+        if (result.status === "success") {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("employeeModal")).hide();
+            loadEmployees();
+        } else {
+            alert("Error: " + result.message);
+        }
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+function updatePayrollPreview() {
+    const select = document.getElementById("payEmployee");
+    const grossEl = document.getElementById("payGross");
+    const netEl = document.getElementById("payNet");
+    if (!select || !grossEl || !netEl) return;
+
+    const employee = employeesCache.find(e => String(e.id) === select.value);
+    const hours = Number(document.getElementById("payHours").value || 0);
+    const deductions = Number(document.getElementById("payDeductions").value || 0);
+    const gross = employee ? Number(employee.hourly_rate) * hours : 0;
+
+    grossEl.textContent = money(gross);
+    netEl.textContent = money(gross - deductions);
+}
+
+async function handleRunPayroll(e) {
+    e.preventDefault();
+    const val = id => document.getElementById(id).value;
+    const status = document.getElementById("payrollStatus");
+
+    const payload = {
+        employee_id: Number(val("payEmployee")),
+        period_start: val("payStart"),
+        period_end: val("payEnd"),
+        hours_worked: Number(val("payHours")),
+        deductions: Number(val("payDeductions") || 0)
+    };
+
+    try {
+        const result = await postJSON("../api/pos_system_api.php?action=run_payroll", payload);
+        if (result.status === "success") {
+            status.textContent = "Saved. Net pay " + money(result.data.net_pay) + ".";
+            status.className = "small mt-2 text-success";
+            document.getElementById("payrollForm").reset();
+            document.getElementById("payDeductions").value = 0;
+            updatePayrollPreview();
+            loadPayroll();
+        } else {
+            status.textContent = result.message || "Could not save payroll.";
+            status.className = "small mt-2 text-danger";
+        }
+    } catch (err) {
+        status.textContent = err.message;
+        status.className = "small mt-2 text-danger";
+    }
+}
+
+async function loadPayroll() {
+    const tbody = document.getElementById("payrollTableBody");
+    if (!tbody) return;
+
+    try {
+        const res = await fetch("../api/pos_system_api.php?action=get_payroll");
+        const result = await res.json();
+        if (result.status !== "success") return;
+
+        tbody.innerHTML = result.data.length
+            ? result.data.map(p => `
+                <tr>
+                    <td class="fw-bold">${esc(p.employee)}</td>
+                    <td>${esc(p.period_start)} to ${esc(p.period_end)}</td>
+                    <td class="text-end">${Number(p.hours_worked).toFixed(2)}</td>
+                    <td class="text-end">${money(p.gross_pay)}</td>
+                    <td class="text-end">${money(p.deductions)}</td>
+                    <td class="text-end fw-bold">${money(p.net_pay)}</td>
+                    <td>${p.paid_at ? esc(formatDate(p.paid_at)) : '<span class="badge bg-warning text-dark">Unpaid</span>'}</td>
+                </tr>`).join("")
+            : '<tr><td colspan="7" class="text-center text-muted py-4">No payroll records yet.</td></tr>';
+    } catch (err) {
+        console.error("Could not load payroll:", err);
     }
 }
 
