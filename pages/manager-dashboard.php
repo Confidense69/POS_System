@@ -59,6 +59,9 @@ if (!in_array($role, $allowed_roles, true)){
       <div class="sidebar-label mt-3 mb-1">Other views</div>
       <ul class="nav nav-pills flex-column gap-1">
         <li class="nav-item"><a class="nav-link" href="cashier-dashboard.php"><i class="bi bi-cart3"></i> Cashier / POS</a></li>
+        <?php if ($role === 'admin'): ?>
+        <li class="nav-item"><a class="nav-link" href="admin-dashboard.php"><i class="bi bi-arrow-left"></i> Back to Admin Dashboard</a></li>
+        <?php endif; ?>
       </ul>
 
       <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
@@ -145,6 +148,29 @@ if (!in_array($role, $allowed_roles, true)){
                   <ul class="list-group list-group-flush mb-3" id="managerLowStock"></ul>
                   <div class="small text-muted mb-1">Expiring within 30 days</div>
                   <ul class="list-group list-group-flush" id="managerExpiring"></ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header bg-white fw-semibold">Sales by Cashier Today</div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Cashier</th>
+                          <th class="text-end">Sales</th>
+                          <th class="text-end">Total</th>
+                          <th class="text-end">Voided</th>
+                        </tr>
+                      </thead>
+                      <tbody id="salesByCashierBody"></tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

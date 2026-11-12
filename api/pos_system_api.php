@@ -557,27 +557,45 @@ try{
         break;
 
     case 'cashier_stats':
-        // Today's numbers for the logged-in cashier (voided sales excluded).
-        $stmt = $pdo->prepare("
-            SELECT COALESCE(SUM(t.total), 0) AS todays_sales,
-                   COUNT(*) AS transactions,
-                   COALESCE((
-                       SELECT SUM(ti.quantity)
-                       FROM transaction_items ti
-                       JOIN transactions t2 ON ti.transaction_id = t2.id
-                       WHERE t2.cashier_id = :cashier_items
-                         AND DATE(t2.created_at) = CURDATE()
-                         AND t2.is_voided = 0
-                   ), 0) AS items_scanned
-            FROM transactions t
-            WHERE t.cashier_id = :cashier_sales
-              AND DATE(t.created_at) = CURDATE()
-              AND t.is_voided = 0
-        ");
-        $stmt->execute([
-            ':cashier_items' => $_SESSION['user_id'],
-            ':cashier_sales' => $_SESSION['user_id'],
-        ]);
+        // Today's numbers, voided sales excluded. Cashiers see their own;
+        // managers and admins see the whole store.
+        if (($_SESSION['role'] ?? 'cashier') === 'cashier') {
+            $stmt = $pdo->prepare("
+                SELECT COALESCE(SUM(t.total), 0) AS todays_sales,
+                       COUNT(*) AS transactions,
+                       COALESCE((
+                           SELECT SUM(ti.quantity)
+                           FROM transaction_items ti
+                           JOIN transactions t2 ON ti.transaction_id = t2.id
+                           WHERE t2.cashier_id = :cashier_items
+                             AND DATE(t2.created_at) = CURDATE()
+                             AND t2.is_voided = 0
+                       ), 0) AS items_scanned
+                FROM transactions t
+                WHERE t.cashier_id = :cashier_sales
+                  AND DATE(t.created_at) = CURDATE()
+                  AND t.is_voided = 0
+            ");
+            $stmt->execute([
+                ':cashier_items' => $_SESSION['user_id'],
+                ':cashier_sales' => $_SESSION['user_id'],
+            ]);
+        } else {
+            $stmt = $pdo->query("
+                SELECT COALESCE(SUM(t.total), 0) AS todays_sales,
+                       COUNT(*) AS transactions,
+                       COALESCE((
+                           SELECT SUM(ti.quantity)
+                           FROM transaction_items ti
+                           JOIN transactions t2 ON ti.transaction_id = t2.id
+                           WHERE DATE(t2.created_at) = CURDATE()
+                             AND t2.is_voided = 0
+                       ), 0) AS items_scanned
+                FROM transactions t
+                WHERE DATE(t.created_at) = CURDATE()
+                  AND t.is_voided = 0
+            ");
+        }
 
         echo json_encode(['status' => 'success', 'data' => $stmt->fetch()]);
         break;
@@ -852,6 +870,19 @@ try{
         ")->fetchAll();
 
         $stats['recent_transactions'] = $recent;
+
+        $byCashier = $pdo->query("SELECT
+        u.full_name AS cashier,
+        SUM(CASE WHEN t.is_voided = 0 THEN 1 ELSE 0 END) AS transactions,
+        COALESCE(SUM(CASE WHEN t.is_voided = 0 THEN t.total ELSE 0 END), 0) AS total,
+        SUM(CASE WHEN t.is_voided = 1 THEN 1 ELSE 0 END) AS voided
+        FROM transactions t JOIN users u ON t.cashier_id = u.id
+        WHERE DATE(t.created_at) = CURDATE()
+        GROUP BY t.cashier_id, u.full_name
+        ORDER BY total DESC
+        ")->fetchAll();
+
+        $stats['sales_by_cashier'] = $byCashier;
 
         echo json_encode(['status' => 'success', 'data' => $stats]);
         

@@ -42,7 +42,7 @@ if (!in_array($role, $allowed_roles, true)){
         <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-cart3"></i> POS / New Sale</a></li>
         <li class="nav-item">
           <a class="nav-link" href="#" id="openHistoryLink" data-bs-toggle="modal" data-bs-target="#historyModal">
-            <i class="bi bi-clock-history"></i> My Transactions
+            <i class="bi bi-clock-history"></i> <?php echo $role === 'cashier' ? 'My Transactions' : 'Transactions'; ?>
           </a>
         </li>
         <li class="nav-item">
@@ -51,6 +51,16 @@ if (!in_array($role, $allowed_roles, true)){
           </a>
         </li>
       </ul>
+      <?php if ($role !== 'cashier'): ?>
+      <div class="sidebar-label mt-3 mb-1">Other views</div>
+      <ul class="nav nav-pills flex-column gap-1">
+        <li class="nav-item">
+          <a class="nav-link" href="<?php echo $role; ?>-dashboard.php">
+            <i class="bi bi-arrow-left"></i> Back to <?php echo ucfirst($role); ?> Dashboard
+          </a>
+        </li>
+      </ul>
+      <?php endif; ?>
       <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
     </aside>
 
@@ -67,7 +77,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-success-subtle"><i class="bi bi-cash-coin"></i></div>
-                <div><div class="text-muted small">Today's Sales</div><div class="h5 mb-0" id="statSales">&#8369;0.00</div></div>
+                <div><div class="text-muted small"><?php echo $role === 'cashier' ? "Today's Sales" : 'Store Sales Today'; ?></div><div class="h5 mb-0" id="statSales">&#8369;0.00</div></div>
               </div>
             </div>
           </div>
@@ -83,7 +93,7 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
                 <div class="icon bg-secondary-subtle"><i class="bi bi-receipt"></i></div>
-                <div><div class="text-muted small">Transactions</div><div class="h5 mb-0" id="statTransactions">0</div></div>
+                <div><div class="text-muted small"><?php echo $role === 'cashier' ? 'Transactions' : 'Transactions Today'; ?></div><div class="h5 mb-0" id="statTransactions">0</div></div>
               </div>
             </div>
           </div>
@@ -221,7 +231,7 @@ if (!in_array($role, $allowed_roles, true)){
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">My Transactions</h5>
+          <h5 class="modal-title"><?php echo $role === 'cashier' ? 'My Transactions' : 'Transactions'; ?></h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body p-0">

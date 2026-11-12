@@ -25,6 +25,7 @@ async function loadManagerStats() {
     setText("statEmployees", Number(d.employees || 0));
 
     renderRecentTransactions(d.recent_transactions);
+    renderSalesByCashier(d.sales_by_cashier);
   } catch (err) {
     console.error("Failed to load manager stats:", err);
   }
@@ -85,6 +86,26 @@ function renderRecentTransactions(rows) {
       <td>${esc(t.cashier || "—")}</td>
       <td><span class="badge bg-secondary">${esc(t.payment_method)}</span></td>
       <td class="text-end fw-bold">₱${Number(t.total || 0).toFixed(2)}</td>
+    </tr>
+  `).join("");
+}
+
+function renderSalesByCashier(rows) {
+  const tbody = document.getElementById("salesByCashierBody");
+  if (!tbody) return;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML =
+      `<tr><td colspan="4" class="text-center text-muted py-4">No sales yet today.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="fw-bold">${esc(r.cashier || "—")}</td>
+      <td class="text-end">${Number(r.transactions || 0)}</td>
+      <td class="text-end fw-bold">₱${Number(r.total || 0).toFixed(2)}</td>
+      <td class="text-end">${Number(r.voided || 0) || "—"}</td>
     </tr>
   `).join("");
 }
