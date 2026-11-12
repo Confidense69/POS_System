@@ -97,20 +97,22 @@ if (!in_array($role, $allowed_roles, true)){
             <div class="card">
               <div class="card-header bg-white fw-semibold">Recent Transactions</div>
               <div class="card-body p-0">
-                <table class="table table-hover mb-0">
-                  <thead class="table-light">
-                    <tr>
-                      <th>#</th>
-                      <th>Date</th>
-                      <th>Cashier</th>
-                      <th>Method</th>
-                      <th class="text-end">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody id="recentTransactionsBody">
-                    <tr><td colspan="5" class="text-center text-muted py-4">No transactions recorded yet.</td></tr>
-                  </tbody>
-                </table>
+                <div class="table-responsive">
+                  <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>#</th>
+                        <th>Date</th>
+                        <th>Cashier</th>
+                        <th>Method</th>
+                        <th class="text-end">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recentTransactionsBody">
+                      <tr><td colspan="5" class="text-center text-muted py-4">No transactions recorded yet.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

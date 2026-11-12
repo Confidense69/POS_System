@@ -167,3 +167,28 @@ body {
     display: none !important;
   }
 }
+
+/* Stack the sidebar above the content on narrow screens. */
+@media (max-width: 768px) {
+  .dashboard-body > .d-flex {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+  }
+  .sidebar .nav {
+    flex-direction: row !important;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .sidebar .nav-link {
+    white-space: nowrap;
+  }
+  .sidebar .mt-auto {
+    margin-top: 0.5rem !important;
+  }
+  .main-content {
+    width: 100%;
+  }
+}
