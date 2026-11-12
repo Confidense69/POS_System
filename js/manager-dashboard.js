@@ -49,7 +49,7 @@ async function loadManagerAlerts() {
             <span>${esc(p.name)}</span>
             <span class="badge bg-warning text-dark">${p.stock_qty} left</span>
           </li>`).join("")
-      : '<li class="list-group-item px-0 text-muted small">Nothing low on stock.</li>';
+      : '<li class="list-group-item px-0 text-center text-muted small py-3"><i class="bi bi-check2-circle d-block fs-5 mb-1"></i>Nothing here yet</li>';
 
     expList.innerHTML = expiring.length
       ? expiring.map(p => {
@@ -62,7 +62,7 @@ async function loadManagerAlerts() {
             <span class="badge ${badge}">${label}</span>
           </li>`;
         }).join("")
-      : '<li class="list-group-item px-0 text-muted small">Nothing expiring soon.</li>';
+      : '<li class="list-group-item px-0 text-center text-muted small py-3"><i class="bi bi-check2-circle d-block fs-5 mb-1"></i>Nothing here yet</li>';
   } catch (err) {
     console.error("Failed to load inventory alerts:", err);
   }
