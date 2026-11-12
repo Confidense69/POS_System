@@ -2,6 +2,7 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   loadManagerStats();
+  loadManagerAlerts();
 });
 
 async function loadManagerStats() {
@@ -26,6 +27,44 @@ async function loadManagerStats() {
     renderRecentTransactions(d.recent_transactions);
   } catch (err) {
     console.error("Failed to load manager stats:", err);
+  }
+}
+
+async function loadManagerAlerts() {
+  const lowList = document.getElementById("managerLowStock");
+  const expList = document.getElementById("managerExpiring");
+  if (!lowList || !expList) return;
+
+  try {
+    const res = await fetch("../api/pos_system_api.php?action=get_inventory_alerts");
+    const result = await res.json();
+    if (result.status !== "success") return;
+
+    const lowStock = result.data.low_stock || [];
+    const expiring = result.data.expiring || [];
+
+    lowList.innerHTML = lowStock.length
+      ? lowStock.map(p => `
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span>${esc(p.name)}</span>
+            <span class="badge bg-warning text-dark">${p.stock_qty} left</span>
+          </li>`).join("")
+      : '<li class="list-group-item px-0 text-muted small">Nothing low on stock.</li>';
+
+    expList.innerHTML = expiring.length
+      ? expiring.map(p => {
+          const days = Number(p.days_left);
+          const badge = days < 0 ? "bg-danger" : "bg-warning text-dark";
+          const label = days < 0 ? "Expired" : days + "d left";
+          return `
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span>${esc(p.name)}</span>
+            <span class="badge ${badge}">${label}</span>
+          </li>`;
+        }).join("")
+      : '<li class="list-group-item px-0 text-muted small">Nothing expiring soon.</li>';
+  } catch (err) {
+    console.error("Failed to load inventory alerts:", err);
   }
 }
 

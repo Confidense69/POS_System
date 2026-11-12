@@ -38,12 +38,9 @@ if (!in_array($role, $allowed_roles, true)){
       </div>
       <span class="role-tag align-self-start mb-3"><?php echo htmlspecialchars($_SESSION['role'] ?? 'Manager'); ?></span>
       <ul class="nav nav-pills flex-column gap-1">
-        <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-box-seam"></i> Products / Inventory</a></li>
-        <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-truck"></i> Suppliers</a></li>
-        <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-receipt"></i> Transactions</a></li>
-        <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-cash-coin"></i> Payroll</a></li>
-        <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-graph-up"></i> Reports</a></li>
+        <li class="nav-item"><a class="nav-link active" href="#manager-overview"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="#manager-alerts"><i class="bi bi-exclamation-triangle"></i> Inventory Alerts</a></li>
+        <li class="nav-item"><a class="nav-link" href="#manager-transactions"><i class="bi bi-receipt"></i> Transactions</a></li>
       </ul>
       <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
     </aside>
@@ -56,7 +53,7 @@ if (!in_array($role, $allowed_roles, true)){
       </nav>
 
       <div class="p-4">
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-4" id="manager-overview">
           <div class="col-md-3">
             <div class="card stat-card">
               <div class="card-body d-flex align-items-center gap-3">
@@ -91,10 +88,10 @@ if (!in_array($role, $allowed_roles, true)){
           </div>
         </div>
 
-        <!-- Recent Activity -->
+        <!-- Recent activity and stock alerts -->
         <div class="row g-3">
-          <div class="col-lg-8">
-            <div class="card">
+          <div class="col-lg-7" id="manager-transactions">
+            <div class="card h-100">
               <div class="card-header bg-white fw-semibold">Recent Transactions</div>
               <div class="card-body p-0">
                 <div class="table-responsive">
@@ -116,14 +113,17 @@ if (!in_array($role, $allowed_roles, true)){
               </div>
             </div>
           </div>
-          <div class="col-lg-4">
-            <div class="card">
-              <div class="card-header bg-white fw-semibold">Quick Actions</div>
-              <div class="card-body d-grid gap-2">
-                <button class="btn btn-outline-primary btn-sm text-start" disabled>Add Product</button>
-                <button class="btn btn-outline-primary btn-sm text-start" disabled>Restock Item</button>
-                <button class="btn btn-outline-primary btn-sm text-start" disabled>Run Payroll</button>
-                <button class="btn btn-outline-primary btn-sm text-start" disabled>View Reports</button>
+
+          <div class="col-lg-5" id="manager-alerts">
+            <div class="card h-100">
+              <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-exclamation-triangle text-warning me-2"></i>Inventory Alerts
+              </div>
+              <div class="card-body">
+                <div class="small text-muted mb-1">Low stock</div>
+                <ul class="list-group list-group-flush mb-3" id="managerLowStock"></ul>
+                <div class="small text-muted mb-1">Expiring within 30 days</div>
+                <ul class="list-group list-group-flush" id="managerExpiring"></ul>
               </div>
             </div>
           </div>
