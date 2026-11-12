@@ -22,6 +22,21 @@ function json_error(string $message, int $status = 400): void
     exit;
 }
 
+/** Write an entry to the audit log. */
+function log_action(PDO $pdo, string $action, ?string $details = null): void
+{
+    try {
+        $stmt = $pdo->prepare("INSERT INTO system_logs (user_id, action, details) VALUES (:user, :action, :details)");
+        $stmt->execute([
+            ':user'    => $_SESSION['user_id'] ?? null,
+            ':action'  => $action,
+            ':details' => $details
+        ]);
+    } catch (Throwable $e) {
+        // A failed log must not break the request.
+    }
+}
+
 /** VAT rates the admin is allowed to choose from (percent). */
 const ALLOWED_VAT_RATES = [12, 16, 20];
 
@@ -74,6 +89,7 @@ try{
              ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
         );
         $stmt->execute([':value' => number_format($vatRate, 2, '.', '')]);
+        log_action($pdo, 'Changed VAT rate', $vatRate . '%');
 
         echo json_encode([
             'status'  => 'success',
@@ -99,12 +115,14 @@ try{
             ':role'      => $data['role'],
             ':email'     => !empty($data['email']) ? $data['email'] : null
         ]);
+        log_action($pdo, 'Added user', (string)($data['username'] ?? ''));
         echo json_encode(['status' => 'success', 'message' => 'User created successfully']);
         break;
 
     case 'toggle_user':
         $stmt = $pdo->prepare("UPDATE users SET is_active = NOT is_active WHERE id = :id");
         $stmt->execute([':id' => $data['user_id']]);
+        log_action($pdo, 'Toggled user status', 'User #' . $data['user_id']);
         echo json_encode(['status' => 'success', 'message' => 'User Status toggled']);
         break;
 
@@ -183,6 +201,7 @@ try{
             ':supplier' => (empty($data['supplier_id']) ? null : $data['supplier_id']),
             ':expiration_date' => (empty($data['expiration_date']) ? null : $data['expiration_date'])
         ]);
+        log_action($pdo, 'Added product', (string)($data['name'] ?? ''));
         echo json_encode(['status' => 'success', 'message' => 'Product saved successfully']);
         break;
 
@@ -192,6 +211,7 @@ try{
 
         $logStmt = $pdo->prepare("INSERT INTO restock_log (product_id, quantity, note) VALUES (:id, :qty, :note)");
         $logStmt->execute([':id' => $data['product_id'], ':qty' => $data['quantity'], ':note' => 'Restocked via admin UI']);
+        log_action($pdo, 'Restocked product', 'Product #' . $data['product_id'] . ' +' . $data['quantity']);
         
         echo json_encode(['status' => 'success', 'message' => 'Restocked successfully']);
         break;
@@ -207,6 +227,7 @@ try{
             echo json_encode(['status' => 'error', 'message' => 'Product not found']);
             break;
         }
+        log_action($pdo, 'Toggled product status', 'Product #' . $data['product_id']);
         echo json_encode(['status' => 'success', 'message' => 'Product Status toggled']);
         break;
 
@@ -236,6 +257,7 @@ try{
             ':expiration_date' => (empty($data['expiration_date']) ? null : $data['expiration_date'])
         ]);
 
+        log_action($pdo, 'Updated product', (string)($data['name'] ?? ''));
         echo json_encode(['status' => 'success', 'message' => 'Product updated successfully']);
         break;
 
@@ -260,6 +282,7 @@ try{
             ':email'   => !empty($data['email']) ? $data['email'] : null,
             ':address' => !empty($data['address']) ? $data['address'] : null
         ]);
+        log_action($pdo, 'Added supplier', (string)($data['name'] ?? ''));
         echo json_encode(['status' => 'success', 'message' => 'Supplier added']);
         break;
 
@@ -274,6 +297,7 @@ try{
             echo json_encode(['status' => 'error', 'message' => 'Supplier not found']);
             break;
         }
+        log_action($pdo, 'Toggled supplier status', 'Supplier #' . $data['supplier_id']);
         echo json_encode(['status' => 'success', 'message' => 'Supplier Status toggled']);
         break;
 
@@ -297,6 +321,7 @@ try{
             ':email'   => !empty($data['email']) ? $data['email'] : null,
             ':address' => !empty($data['address']) ? $data['address'] : null
         ]);
+        log_action($pdo, 'Updated supplier', (string)($data['name'] ?? ''));
         echo json_encode(['status' => 'success', 'message' => 'Supplier updated']);
         break;
     // ----------------------------------------------------
@@ -608,6 +633,7 @@ try{
             }
 
             $pdo->commit();
+            log_action($pdo, 'Voided sale', 'Transaction #' . $transactionId);
             echo json_encode(['status' => 'success', 'message' => 'Transaction #' . $transactionId . ' voided']);
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -707,11 +733,27 @@ try{
             ':net'        => $net
         ]);
 
+        log_action($pdo, 'Saved payroll', 'Employee #' . $employeeId . ' (' . $start . ' to ' . $end . ')');
         echo json_encode([
             'status' => 'success',
             'message' => 'Payroll saved',
             'data' => ['gross_pay' => $gross, 'deductions' => $deductions, 'net_pay' => $net]
         ]);
+        break;
+
+    case 'get_system_logs':
+        if (($_SESSION['role'] ?? '') !== 'admin') {
+            json_error('Only an admin can view system logs', 403);
+        }
+
+        $stmt = $pdo->query("
+            SELECT l.id, l.action, l.details, l.created_at, u.username
+            FROM system_logs l
+            LEFT JOIN users u ON u.id = l.user_id
+            ORDER BY l.id DESC
+            LIMIT 200
+        ");
+        echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll()]);
         break;
 
     case 'manager_stats':

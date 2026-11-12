@@ -24,6 +24,13 @@ if ($user && password_verify($password, $user['password_hash'])){
     $_SESSION['full_name'] = $user['full_name'];
     $_SESSION['role'] = $user['role'];
 
+    try {
+        $log = $pdo->prepare("INSERT INTO system_logs (user_id, action, details) VALUES (?, 'Login', ?)");
+        $log->execute([$user['id'], 'Signed in as ' . $user['role']]);
+    } catch (Throwable $e) {
+        // A failed log must not block login.
+    }
+
     echo json_encode([
         'success' => true,
         'role' => $user['role'],

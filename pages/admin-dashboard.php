@@ -57,9 +57,11 @@ if (!in_array($role, $allowed_roles, true)){
         <li class="nav-item">
           <a class="nav-link" id="tab-payroll" data-bs-toggle="pill" href="#sec-payroll"><i class="bi bi-cash-coin"></i> Payroll</a>
         </li>
-        <!-- Reports / System Logs are not implemented yet -->
+        <!-- Reports are not implemented yet -->
         <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-graph-up"></i> Reports <span class="badge bg-secondary ms-1">soon</span></a></li>
-        <li class="nav-item"><a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true"><i class="bi bi-journal-text"></i> System Logs <span class="badge bg-secondary ms-1">soon</span></a></li>
+        <li class="nav-item">
+          <a class="nav-link" id="tab-logs" data-bs-toggle="pill" href="#sec-logs"><i class="bi bi-journal-text"></i> System Logs</a>
+        </li>
       </ul>
       <a href="../api/logout.php" class="btn btn-outline-light mt-auto btn-sm">Logout</a>
     </aside>
@@ -295,6 +297,26 @@ if (!in_array($role, $allowed_roles, true)){
                     <tr><th>Employee</th><th>Period</th><th class="text-end">Hours</th><th class="text-end">Gross</th><th class="text-end">Deductions</th><th class="text-end">Net Pay</th><th>Paid</th></tr>
                   </thead>
                   <tbody id="payrollTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. SYSTEM LOGS TAB -->
+        <div class="tab-pane fade" id="sec-logs">
+          <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+              <h5 class="mb-0 fw-bold"><i class="bi bi-journal-text text-primary me-2"></i>System Logs</h5>
+              <button class="btn btn-outline-secondary btn-sm" id="refreshLogsBtn" type="button">Refresh</button>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr>
+                  </thead>
+                  <tbody id="logsTableBody"></tbody>
                 </table>
               </div>
             </div>

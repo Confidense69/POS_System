@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadTransactions();
     loadEmployees();
     loadPayroll();
+    loadSystemLogs();
 
     // Form Submissions
     document.getElementById("addProductForm")?.addEventListener("submit", handleAddProduct);
@@ -18,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("employeeForm")?.addEventListener("submit", handleSaveEmployee);
     document.getElementById("payrollForm")?.addEventListener("submit", handleRunPayroll);
     document.getElementById("refreshPayrollBtn")?.addEventListener("click", loadPayroll);
+    document.getElementById("refreshLogsBtn")?.addEventListener("click", loadSystemLogs);
     document.getElementById("payEmployee")?.addEventListener("change", updatePayrollPreview);
     document.getElementById("payHours")?.addEventListener("input", updatePayrollPreview);
     document.getElementById("payDeductions")?.addEventListener("input", updatePayrollPreview);
@@ -593,6 +595,33 @@ async function loadPayroll() {
             : '<tr><td colspan="7" class="text-center text-muted py-4">No payroll records yet.</td></tr>';
     } catch (err) {
         console.error("Could not load payroll:", err);
+    }
+}
+
+// 6. System logs
+async function loadSystemLogs() {
+    const tbody = document.getElementById("logsTableBody");
+    if (!tbody) return;
+
+    try {
+        const res = await fetch("../api/pos_system_api.php?action=get_system_logs");
+        const result = await res.json();
+        if (result.status !== "success") {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Could not load logs.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = result.data.length
+            ? result.data.map(l => `
+                <tr>
+                    <td class="text-nowrap">${esc(formatDate(l.created_at))}</td>
+                    <td>${esc(l.username) || "&mdash;"}</td>
+                    <td class="fw-bold">${esc(l.action)}</td>
+                    <td>${esc(l.details) || "&mdash;"}</td>
+                </tr>`).join("")
+            : '<tr><td colspan="4" class="text-center text-muted py-4">No activity yet.</td></tr>';
+    } catch (err) {
+        console.error("Could not load logs:", err);
     }
 }
 
