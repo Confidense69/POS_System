@@ -122,10 +122,11 @@ async function saveVatRate() {
 
 // 1. Account Management
 async function loadAccounts() {
-    const res = await fetch("../api/pos_system_api.php?action=get_users");
-    const result = await res.json();
     const tbody = document.getElementById("accountsTableBody");
     if (!tbody) return;
+
+    const res = await fetch("../api/pos_system_api.php?action=get_users");
+    const result = await res.json();
 
     if (result.status === "success") {
         tbody.innerHTML = result.data.map(u => `
